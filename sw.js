@@ -1,7 +1,10 @@
 // Offline support: app shell is cached; network-first so updates show up right away.
-const CACHE = 'planner-v3';
+// Bump VERSION together with the ?v= in index.html on every release.
+const VERSION = 4;
+const CACHE = 'planner-v' + VERSION;
 const SHELL = [
-  './', 'index.html', 'styles.css', 'app.js', 'google.js', 'store.js', 'data.js', 'manifest.webmanifest',
+  './', 'index.html', 'manifest.webmanifest',
+  ...['styles.css', 'app.js', 'google.js', 'store.js', 'data.js'].map(f => `${f}?v=${VERSION}`),
   'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-180.png',
 ];
 
