@@ -111,7 +111,7 @@ const Sync = {
   running: null,
   listeners: [],
   hooks: [],
-  hookError: '',
+  hookError: null, // last error from a hook (Google Tasks), shown in settings
 
   onStatus(fn) { this.listeners.push(fn); },
   setState(state, message = '') {
@@ -193,7 +193,19 @@ const Sync = {
       lsSet(LS_TOKEN, null);
       throw Object.assign(new Error('auth'), { auth: true });
     }
-    if (!res.ok) throw new Error(`Drive ${res.status}: ${await res.text()}`);
+    if (!res.ok) {
+      const text = await res.text();
+      let err = {};
+      try { err = JSON.parse(text).error || {}; } catch {}
+      // An API that's switched off in Google Cloud: say which one, with the link that turns it on.
+      const disabled = (err.details || []).find(d => d.reason === 'SERVICE_DISABLED');
+      if (disabled) {
+        throw Object.assign(new Error(`${disabled.metadata?.serviceTitle || 'Google API'} כבוי בפרויקט ב-Google Cloud`), {
+          status: res.status, enableUrl: disabled.metadata?.activationUrl,
+        });
+      }
+      throw Object.assign(new Error(`Google ${res.status}: ${err.message || text.slice(0, 200)}`), { status: res.status });
+    }
     return res;
   },
 
@@ -247,12 +259,12 @@ const Sync = {
       // Extra syncs (Google Tasks) run between pull and push, so every device
       // sees the same Google ids before it creates anything new.
       let hooksChanged = false;
-      this.hookError = '';
+      this.hookError = null;
       for (const hook of this.hooks) {
         try { hooksChanged = (await hook()) || hooksChanged; } catch (e) {
           if (e.auth) throw e;
           console.warn('sync hook', e);
-          this.hookError = e.message;
+          this.hookError = e;
         }
       }
       if (remoteChanged || hooksChanged || !this.fileId) await this.upload(Store.recs);

@@ -38,6 +38,8 @@ code { background: var(--bg); padding: 2px 6px; border-radius: 6px; font-size: .
 .muted { color: var(--muted); font-size: .9rem; }
 .hint { color: var(--muted); font-size: .85rem; margin: 6px 0 14px; }
 .warn { color: var(--orange); font-size: .9rem; }
+.warn-box { border: 1px solid var(--orange); background: color-mix(in srgb, var(--orange) 10%, var(--panel)); border-radius: 12px; padding: 4px 14px 12px; margin: 12px 0; }
+.warn-box p { margin: 8px 0; }
 .empty { color: var(--muted); text-align: center; padding: 30px 0; }
 .row { display: flex; gap: 8px; align-items: center; }
 .row.wrap { flex-wrap: wrap; }

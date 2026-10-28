@@ -12,7 +12,7 @@ const GCal = {
   weeks: {},         // weekKey -> [events]
   loading: {},
   fetchedAt: {},
-  lastError: '',
+  lastError: null,
 
   ready() { return Sync.connected && Sync.hasScope('calendar') && !!Sync.token(); },
 
@@ -79,12 +79,16 @@ const GCal = {
       const changed = JSON.stringify(events) !== JSON.stringify(this.weeks[key]);
       this.weeks[key] = events;
       this.fetchedAt[key] = Date.now();
-      this.lastError = '';
+      const hadError = !!this.lastError;
+      this.lastError = null;
       this.saveCache();
-      if (changed) onUpdate?.();
+      if (changed || hadError) onUpdate?.();
     } catch (e) {
-      this.lastError = e.message;
+      const isNew = this.lastError?.message !== e.message;
+      this.lastError = e;
+      this.fetchedAt[key] = Date.now(); // don't hammer Google while it's failing
       if (e.auth) Sync.setState('needs-auth', 'פג תוקף החיבור');
+      else if (isNew) onUpdate?.();
     } finally {
       this.loading[key] = false;
     }
@@ -231,4 +235,11 @@ const GTasks = {
 };
 
 GCal.loadCache();
+// Coming back to the app (e.g. after enabling an API in Google Cloud): retry the calendar.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  GCal.fetchedAt = {};
+  GCal.lastError = null;
+  if (currentView === 'timetable' || currentView === 'settings') render();
+});
 Sync.hooks.push(() => GTasks.sync());

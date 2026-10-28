@@ -369,6 +369,7 @@ function renderTasks(root) {
         <h2>📝 משימות ומבחנים</h2>
         <button class="btn primary" id="addTask">＋ משימה חדשה</button>
       </div>
+      ${Sync.hookError ? errorNote('הסנכרון עם Google Tasks לא עובד', Sync.hookError) : ''}
       <div class="filters">
         <div class="seg small">
           ${[['open', 'פתוחות'], ['done', 'בוצעו'], ['all', 'הכל']].map(([v, l]) => `<button data-f="${v}" class="${taskFilter === v ? 'on' : ''}">${l}</button>`).join('')}
@@ -523,7 +524,7 @@ function renderTimetable(root) {
   const todays = items.filter(i => i.day === todayIdx).sort((a, b) => a.s - b.s);
   const calNote = !Sync.connected ? ''
     : !Sync.hasScope('calendar') ? '<p class="warn">כדי לראות את Google Calendar כאן, לחץ "התחבר מחדש" בהגדרות.</p>'
-    : GCal.lastError ? `<p class="warn">שגיאה בטעינת היומן: ${esc(GCal.lastError)}</p>` : '';
+    : GCal.lastError ? errorNote('לא הצלחתי לטעון את היומן', GCal.lastError) : '';
 
   root.innerHTML = `
     <section class="panel">
@@ -613,6 +614,18 @@ function editSlot(id, defaults = {}) {
 }
 
 // ---------- settings ----------
+// A Google error, with a one-click fix when it's an API that is switched off.
+function errorNote(what, e) {
+  if (e.enableUrl) {
+    return `<div class="warn-box">
+      <p><b>⚠️ ${esc(what)}:</b> ${esc(e.message)}.</p>
+      <p class="muted">לחץ על הכפתור, ובדף שנפתח לחץ <b>Enable</b>. אחרי דקה-שתיים חזור לכאן.</p>
+      <a class="btn primary" href="${esc(e.enableUrl)}" target="_blank" rel="noopener">הפעל ב-Google Cloud</a>
+    </div>`;
+  }
+  return `<p class="warn">⚠️ ${esc(what)}: ${esc(e.message || e)}</p>`;
+}
+
 function googleSection(st) {
   const missing = ['calendar', 'tasks'].filter(s => !Sync.hasScope(s));
   if (missing.length && Sync.token()) {
@@ -634,14 +647,14 @@ function googleSection(st) {
         <label class="check"><input type="checkbox" class="calPick" value="${esc(c.id)}" ${chosen.includes(c.id) ? 'checked' : ''}>
         <span class="ev-dot" style="--ev:${esc(c.color)}"></span>${esc(c.summary)}</label>`).join('')}</div>`
         : `<p class="muted">טוען יומנים…</p>`}
-      ${GCal.lastError ? `<p class="warn">${esc(GCal.lastError)}</p>` : ''}
+      ${GCal.lastError ? errorNote('לא הצלחתי לטעון את היומנים', GCal.lastError) : ''}
     </section>
 
     <section class="panel narrow">
       <h2>✅ Google Tasks</h2>
       <label class="check"><input type="checkbox" id="tasksSync" ${st.tasksSync !== false ? 'checked' : ''}> סנכרון דו-כיווני של המשימות עם הרשימה "${esc(TASKS_LIST_TITLE)}" ב-Google Tasks</label>
       <p class="muted">משימה שתוסיף, תסמן או תמחק כאן תופיע גם ב-Google Tasks, ולהפך. Google Tasks שומר רק תאריך, בלי שעה.</p>
-      ${Sync.hookError ? `<p class="warn">${esc(Sync.hookError)}</p>` : ''}
+      ${Sync.hookError ? errorNote('סנכרון המשימות נכשל', Sync.hookError) : ''}
     </section>`;
 }
 
@@ -649,7 +662,7 @@ function bindGoogleSection(root) {
   $('#grantMore', root)?.addEventListener('click', () => Sync.authorize());
   if (!$('.cal-picks', root) && Sync.connected && Sync.hasScope('calendar') && Sync.token() && !GCal.lastError) {
     GCal.listCalendars().then(() => GCal.selectedIds()).then(() => { if (currentView === 'settings') render(); })
-      .catch(e => { GCal.lastError = e.message; if (currentView === 'settings') render(); });
+      .catch(e => { GCal.lastError = e; if (currentView === 'settings') render(); });
   }
   $$('.calPick', root).forEach(cb => cb.onchange = () => {
     Store.put('meta', 'settings', { calendarIds: $$('.calPick:checked', root).map(x => x.value) });
@@ -708,7 +721,7 @@ function renderSettings(root) {
       <h2>💾 גיבוי</h2>
       <div class="row wrap">
         <button class="btn" id="exportBtn">⬇️ ייצוא לקובץ</button>
-        <label class="btn file-btn">⬆️ ייבוא מקובץ<input type="file" id="importFile" accept="application/json,.json" hidden></label>
+        <button class="btn" id="importBtn">⬆️ ייבוא מקובץ</button>
         <button class="btn danger" id="resetCurriculum">אפס תוכנית לימודים</button>
       </div>
       <p class="muted">איפוס מחזיר את רשימת הקורסים לתוכנית ברירת המחדל (הציונים והסטטוסים יימחקו). משימות ומערכת שעות לא נפגעות.</p>
@@ -745,21 +758,7 @@ function renderSettings(root) {
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   };
-  $('#importFile').onchange = async e => {
-    const file = e.target.files[0];
-    if (!file) return;
-    try {
-      const data = JSON.parse(await file.text());
-      if (!data.recs) throw new Error();
-      if (!confirm('לייבא את הגיבוי? רשומות חדשות יותר בגיבוי יחליפו את הקיימות.')) return;
-      // Bump timestamps so the imported state wins everywhere after the next sync.
-      const now = Date.now();
-      const bumped = Object.fromEntries(Object.entries(data.recs).map(([k, r]) => [k, { ...r, u: now }]));
-      Store.replaceAll({ ...Store.recs, ...bumped });
-      Sync.schedule(100);
-      toast('הגיבוי יובא');
-    } catch { alert('קובץ לא תקין'); }
-  };
+  $('#importBtn').onclick = () => $('#importFile').click();
   $('#resetCurriculum').onclick = () => {
     if (!confirm('לאפס את כל הקורסים לתוכנית ברירת המחדל?')) return;
     courses().forEach(c => Store.remove('course', c.code));
@@ -772,15 +771,41 @@ function renderSettings(root) {
   };
 }
 
+// The file input lives outside #view so a re-render while the picker is open
+// can't throw away the chosen file. No `accept` filter: iOS greys out .json files with one.
+async function importBackup(e) {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  let data;
+  try {
+    data = JSON.parse(await file.text());
+    if (!data || typeof data.recs !== 'object') throw new Error();
+  } catch { alert('הקובץ הזה לא גיבוי של האפליקציה'); return; }
+  const n = Object.keys(data.recs).length;
+  if (!confirm(`לייבא ${n} רשומות מהקובץ? הן יחליפו את הקיימות.`)) return;
+  // Bump timestamps so the imported state wins everywhere after the next sync.
+  const now = Date.now();
+  const bumped = Object.fromEntries(Object.entries(data.recs).map(([k, r]) => [k, { ...r, u: now }]));
+  Store.replaceAll({ ...Store.recs, ...bumped });
+  Sync.schedule(100);
+  toast(`יובאו ${n} רשומות`);
+}
+
 // ---------- boot ----------
 // Runs after every script (including google.js) has loaded.
 window.addEventListener('DOMContentLoaded', () => {
   Store.load();
   seedData();
   Store.onChange(() => render());
+  $('#importFile').onchange = importBackup;
+  let shownTaskError = null;
   Sync.onStatus(state => {
     renderSyncBtn(state);
     if (currentView === 'settings' && document.activeElement?.id !== 'clientId') render();
+    // Show (or clear) a Google Tasks problem on the tasks page once a sync finishes.
+    if (currentView === 'tasks' && state !== 'syncing' && Sync.hookError?.message !== shownTaskError) render();
+    if (state !== 'syncing') shownTaskError = Sync.hookError?.message;
   });
   try { currentView = localStorage.getItem('pp_view') || 'map'; } catch {}
   if (!$(`#tabs [data-view="${currentView}"]`)) currentView = 'map';

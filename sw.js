@@ -1,5 +1,5 @@
 // Offline support: app shell is cached; network-first so updates show up right away.
-const CACHE = 'planner-v2';
+const CACHE = 'planner-v3';
 const SHELL = [
   './', 'index.html', 'styles.css', 'app.js', 'google.js', 'store.js', 'data.js', 'manifest.webmanifest',
   'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-180.png',
