@@ -13,7 +13,7 @@ No server or database is needed.
 ## 2. Turn on Google sync (one time)
 
 1. Go to https://console.cloud.google.com/projectcreate and create a project.
-2. Go to **APIs & Services → Library**, find **Google Drive API**, and enable it.
+2. Go to **APIs & Services → Library** and enable **Google Drive API**, **Google Calendar API** and **Google Tasks API**.
 3. Go to **OAuth consent screen**, pick External, fill in the app name and your email, and add yourself as a **Test user**.
    Then click **Publish app**. Otherwise Google expires the connection every 7 days. Since it's only for you, you don't need verification:
    just click through the "unverified app" warning once.
@@ -29,6 +29,11 @@ The app's Settings page shows the exact origin and redirect URI to paste, so you
 
 - **PC (Chrome/Edge):** click the install icon in the address bar.
 - **iPhone/iPad (Safari):** tap Share, then **Add to Home Screen**.
+
+## Google Calendar and Google Tasks
+
+- **מערכת שעות (timetable)** shows a week at a time: your weekly classes plus events from the Google calendars you tick in Settings. By default those are `נועם ישראל` and `לימודים - רשות`. Calendar access is read-only.
+- **משימות (tasks)** sync both ways with a Google Tasks list named **התואר שלי**. Google Tasks keeps only the date, not the time.
 
 ## How sync works
 

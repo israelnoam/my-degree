@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   --bg: #0b1220;
   --bg-2: #111a2e;
   --panel: #131d33;
@@ -179,32 +179,18 @@ main { max-width: 1400px; margin: 0 auto; padding: 14px 20px 40px; }
 .task-list.compact .task { padding: 8px 10px; gap: 8px; }
 .task-list.compact .t-rel { display: none; }
 
-/* ---------- calendar ---------- */
-.cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
-.cal-head { text-align: center; color: var(--muted); font-size: .8rem; padding: 4px 0; }
-.cal-cell {
-  min-height: 96px; background: var(--bg-2); border: 1px solid var(--line); border-radius: 8px;
-  padding: 4px; cursor: pointer; display: flex; flex-direction: column; gap: 3px; min-width: 0;
-}
-.cal-cell:hover { border-color: var(--muted); }
-.cal-cell.other { opacity: .4; }
-.cal-cell.today { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
-.cal-num { font-size: .8rem; color: var(--muted); }
-.cal-cell.today .cal-num { color: var(--accent); font-weight: 800; }
-.cal-item {
-  font-size: .72rem; text-align: start; border: 0; border-radius: 5px; padding: 2px 5px; cursor: pointer;
-  background: #1c3156; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;
-}
-.cal-item.t-exam { background: #4a1d27; }
-.cal-item.t-quiz { background: #4a3215; }
-.cal-item.t-project { background: #24384a; }
-.cal-item.done { opacity: .45; text-decoration: line-through; }
-
 /* ---------- timetable ---------- */
 .today-strip { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 12px 0; font-size: .9rem; }
 .tt-scroll { overflow-x: auto; margin-top: 12px; border-radius: 10px; }
 .tt { display: grid; grid-template-columns: 52px repeat(var(--days), minmax(110px, 1fr)); min-width: calc(52px + var(--days) * 110px); }
-.tt-head { height: 34px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; border-bottom: 1px solid var(--line); }
+.tt-head { height: 42px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; border-bottom: 1px solid var(--line); line-height: 1.2; }
+.tt-head small { font-weight: 400; color: var(--muted); font-size: .72rem; }
+.tt-allday { display: flex; flex-direction: column; gap: 2px; padding: 0 2px; overflow: hidden; }
+.allday {
+  height: 22px; border: 0; border-radius: 5px; padding: 0 6px; font-size: .72rem; cursor: pointer; text-align: start;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text);
+  background: color-mix(in srgb, var(--ev) 35%, var(--bg));
+}
 .tt-col.today .tt-head { color: var(--accent); }
 .tt-body { position: relative; }
 .tt-col .tt-body { border-inline-start: 1px solid var(--line); cursor: copy; }
@@ -212,12 +198,23 @@ main { max-width: 1400px; margin: 0 auto; padding: 14px 20px 40px; }
 .tt-times .tt-hour span { position: absolute; top: -8px; inset-inline-end: 6px; font-size: .7rem; color: var(--muted); }
 .tt-times .tt-hour:first-child span { top: 2px; }
 .slot {
-  position: absolute; inset-inline: 3px; border-radius: 8px; padding: 4px 6px; overflow: hidden; cursor: pointer;
+  position: absolute; inset-inline-start: 3px; width: calc(100% - 6px); border-radius: 8px; padding: 4px 6px; overflow: hidden; cursor: pointer;
   background: hsl(var(--h) 45% 22%); border: 1px solid hsl(var(--h) 55% 42%); border-inline-start: 4px solid hsl(var(--h) 70% 60%);
   display: flex; flex-direction: column; text-align: start; gap: 1px;
 }
 .slot b { font-size: .78rem; line-height: 1.2; }
 .slot small { font-size: .68rem; color: #c8d2e6; }
+.slot.event {
+  background: color-mix(in srgb, var(--ev) 28%, var(--bg));
+  border: 1px solid color-mix(in srgb, var(--ev) 60%, var(--bg));
+  border-inline-start: 4px solid var(--ev);
+}
+.ev-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--ev); vertical-align: middle; flex: none; }
+.ev-desc { white-space: pre-wrap; color: var(--muted); font-size: .9rem; max-height: 200px; overflow: auto; }
+.cal-picks { display: flex; flex-direction: column; gap: 4px; }
+.cal-picks label.check { margin: 0; padding: 6px 0; gap: 10px; }
+.btn.on { border-color: var(--blue); }
+a.btn { text-decoration: none; color: var(--text); }
 
 /* ---------- settings ---------- */
 .sync-status {
@@ -314,7 +311,4 @@ dialog h2 { margin-bottom: 14px; }
   .sem-courses { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .grid2 { grid-template-columns: 1fr; }
 
-  .cal-cell { min-height: 58px; padding: 3px; }
-  .cal-item { font-size: 0; padding: 0; height: 6px; border-radius: 3px; }
-  .cal-head { font-size: .7rem; }
 }

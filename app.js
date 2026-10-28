@@ -5,7 +5,6 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const fmt = (n, d = 1) => (Math.round(n * 10 ** d) / 10 ** d).toString();
 
 const DAY_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
-const MONTH_NAMES = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
 const TASK_TYPES = {
   hw: { label: 'שיעורי בית', icon: '📘' },
   exam: { label: 'מבחן', icon: '🎯' },
@@ -119,7 +118,7 @@ $('#tabs').addEventListener('click', e => {
 
 function render() {
   renderStats();
-  const views = { map: renderMap, tasks: renderTasks, calendar: renderCalendar, timetable: renderTimetable, settings: renderSettings };
+  const views = { map: renderMap, tasks: renderTasks, timetable: renderTimetable, settings: renderSettings };
   (views[currentView] || renderMap)($('#view'));
 }
 
@@ -425,60 +424,11 @@ function editTask(id, defaults = {}) {
   });
 }
 
-// ---------- calendar ----------
-let calMonth = new Date(); calMonth.setDate(1);
-function renderCalendar(root) {
-  const y = calMonth.getFullYear(), m = calMonth.getMonth();
-  const start = new Date(y, m, 1 - new Date(y, m, 1).getDay());
-  const today = ymd(new Date());
-  const byDay = {};
-  tasks().forEach(t => { if (t.due) (byDay[t.due.slice(0, 10)] ||= []).push(t); });
-
-  const monthKey = `${y}-${String(m + 1).padStart(2, '0')}`;
-  const monthTasks = tasks().filter(t => (t.due || '').startsWith(monthKey));
-  let cells = '';
-  for (let i = 0; i < 42; i++) {
-    const d = new Date(start); d.setDate(start.getDate() + i);
-    const key = ymd(d);
-    const items = byDay[key] || [];
-    cells += `
-      <div class="cal-cell ${d.getMonth() !== m ? 'other' : ''} ${key === today ? 'today' : ''}" data-date="${key}">
-        <span class="cal-num">${d.getDate()}</span>
-        ${items.map(t => `<button type="button" class="cal-item t-${esc(t.type)} ${t.done ? 'done' : ''}" data-id="${esc(t.id)}" title="${esc(t.title)}">${(TASK_TYPES[t.type] || TASK_TYPES.other).icon} ${esc(t.title)}</button>`).join('')}
-      </div>`;
-  }
-  root.innerHTML = `
-    <section class="panel">
-      <div class="toolbar">
-        <h2>📅 ${MONTH_NAMES[m]} ${y}</h2>
-        <div class="row">
-          <button class="btn" id="calPrev" aria-label="חודש קודם">→</button>
-          <button class="btn" id="calToday">היום</button>
-          <button class="btn" id="calNext" aria-label="חודש הבא">←</button>
-        </div>
-      </div>
-      <p class="hint">לחץ על יום כדי להוסיף משימה או מבחן.</p>
-      <div class="cal-grid">
-        ${DAY_NAMES.map(d => `<div class="cal-head">${d}</div>`).join('')}
-        ${cells}
-      </div>
-      ${monthTasks.length ? `<h3>החודש</h3><ul class="task-list">${monthTasks.map(taskItem).join('')}</ul>` : ''}
-    </section>`;
-  bindTaskList(root);
-  $('#calPrev').onclick = () => { calMonth = new Date(y, m - 1, 1); render(); };
-  $('#calNext').onclick = () => { calMonth = new Date(y, m + 1, 1); render(); };
-  $('#calToday').onclick = () => { calMonth = new Date(); calMonth.setDate(1); render(); };
-  $$('.cal-cell', root).forEach(cell => cell.onclick = e => {
-    const item = e.target.closest('.cal-item');
-    if (item) editTask(item.dataset.id);
-    else editTask(null, { due: cell.dataset.date });
-  });
-}
-
-// ---------- timetable ----------
-const TT_START = 8, TT_END = 21, TT_ORIGIN = TT_START * 60 + 30; // rows start at :30, Technion-style
+// ---------- timetable (weekly, with Google Calendar events) ----------
 const toMin = s => { const [h, mm] = (s || '0:0').split(':').map(Number); return h * 60 + mm; };
+const hhmm = m => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 const slots = () => Store.list('slot');
+const HOUR_PX = 52;
 
 function slotColor(key) {
   let h = 0;
@@ -486,52 +436,150 @@ function slotColor(key) {
   return h;
 }
 
-function renderTimetable(root) {
-  const all = slots();
-  const days = all.some(s => +s.day === 5) ? 6 : 5;
-  const hours = [];
-  for (let h = TT_START; h < TT_END; h++) hours.push(h);
-  const total = (TT_END - TT_START) * 60;
-  const todayIdx = new Date().getDay();
+function startOfWeek(d) {
+  const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - x.getDay());
+  return x;
+}
+let ttWeek = startOfWeek(new Date());
 
-  const cols = Array.from({ length: days }, (_, d) => {
-    const items = all.filter(s => +s.day === d).map(s => {
-      const top = (toMin(s.start) - TT_ORIGIN) / total * 100;
-      const height = (toMin(s.end) - toMin(s.start)) / total * 100;
-      const title = s.course ? courseLabel(s.course) : s.title;
-      return `<button type="button" class="slot" data-id="${esc(s.id)}" style="top:${top}%;height:${height}%;--h:${slotColor(s.course || s.title)}">
-        <b>${esc(title)}</b><small>${esc(s.stype)} · <span dir="ltr">${esc(s.start)}–${esc(s.end)}</span></small>${s.room ? `<small>${esc(s.room)}</small>` : ''}
+// Side-by-side layout for overlapping items in one day column.
+function layoutLanes(items) {
+  items.sort((a, b) => a.s - b.s || b.e - a.e);
+  let group = [], groupEnd = -1;
+  const flush = () => {
+    const lanes = [];
+    for (const it of group) {
+      let lane = lanes.findIndex(end => end <= it.s);
+      if (lane === -1) { lane = lanes.length; lanes.push(0); }
+      lanes[lane] = it.e; it.lane = lane;
+    }
+    group.forEach(it => { it.lanes = lanes.length; });
+    group = [];
+  };
+  for (const it of items) {
+    if (it.s >= groupEnd) { flush(); groupEnd = -1; }
+    group.push(it); groupEnd = Math.max(groupEnd, it.e);
+  }
+  flush();
+  return items;
+}
+
+function renderTimetable(root) {
+  const weekStart = ttWeek;
+  const weekEnd = new Date(weekStart); weekEnd.setDate(weekEnd.getDate() + 6);
+  const isThisWeek = ymd(weekStart) === ymd(startOfWeek(new Date()));
+  const todayKey = ymd(new Date());
+  const dates = Array.from({ length: 7 }, (_, i) => { const d = new Date(weekStart); d.setDate(d.getDate() + i); return d; });
+
+  // Weekly class slots + this week's calendar events, normalised to {day, s, e}.
+  const items = slots().map(s => ({
+    kind: 'slot', id: s.id, day: +s.day, s: toMin(s.start), e: toMin(s.end),
+    title: s.course ? courseLabel(s.course) : s.title, sub: s.stype, place: s.room, hue: slotColor(s.course || s.title),
+  }));
+  const allDay = Array.from({ length: 7 }, () => []);
+  for (const ev of GCal.eventsFor(weekStart)) {
+    if (ev.allDay) {
+      dates.forEach((d, i) => { const k = ymd(d); if (k >= ev.start.slice(0, 10) && k < ev.end.slice(0, 10)) allDay[i].push(ev); });
+      continue;
+    }
+    const st = new Date(ev.start), en = new Date(ev.end);
+    const day = ymd(startOfWeek(st)) === ymd(weekStart) ? st.getDay() : -1;
+    if (day < 0) continue;
+    const endMin = ymd(en) === ymd(st) ? en.getHours() * 60 + en.getMinutes() : 24 * 60;
+    items.push({
+      kind: 'event', id: ev.id, day, s: st.getHours() * 60 + st.getMinutes(), e: Math.max(endMin, st.getHours() * 60 + st.getMinutes() + 15),
+      title: ev.title, sub: ev.calendar, place: ev.location, color: ev.color,
+    });
+  }
+
+  const allDayH = Math.max(0, ...allDay.map(a => a.length)) * 24;
+  const used = new Set(items.map(i => i.day).concat(allDay.flatMap((a, i) => a.length ? [i] : [])));
+  const days = used.has(6) ? 7 : used.has(5) ? 6 : 5;
+  const startMin = Math.min(8 * 60 + 30, ...items.map(i => Math.floor((i.s - 30) / 60) * 60 + 30));
+  const endMin = Math.max(21 * 60 + 30, ...items.map(i => i.e));
+  const hours = [];
+  for (let m = startMin; m < endMin; m += 60) hours.push(m);
+  const total = hours.length * 60;
+
+  const cols = dates.slice(0, days).map((d, di) => {
+    const dayItems = layoutLanes(items.filter(i => i.day === di));
+    const blocks = dayItems.map(it => {
+      const pos = `top:${(it.s - startMin) / total * 100}%;height:${(it.e - it.s) / total * 100}%;` +
+        `width:calc(${100 / it.lanes}% - 6px);inset-inline-start:calc(${(100 / it.lanes) * it.lane}% + 3px);`;
+      const style = it.kind === 'slot' ? `--h:${it.hue}` : `--ev:${esc(it.color)}`;
+      return `<button type="button" class="slot ${it.kind}" data-kind="${it.kind}" data-id="${esc(it.id)}" style="${pos}${style}">
+        <b>${esc(it.title)}</b><small>${esc(it.sub)} · <span dir="ltr">${hhmm(it.s)}–${hhmm(it.e)}</span></small>${it.place ? `<small>${esc(it.place)}</small>` : ''}
       </button>`;
     }).join('');
-    return `<div class="tt-col ${d === todayIdx ? 'today' : ''}" data-day="${d}"><div class="tt-head">${DAY_NAMES[d]}</div><div class="tt-body">${hours.map(() => '<div class="tt-hour"></div>').join('')}${items}</div></div>`;
+    const key = ymd(d);
+    return `<div class="tt-col ${key === todayKey ? 'today' : ''}" data-day="${di}">
+      <div class="tt-head">${DAY_NAMES[di]}<small>${d.getDate()}.${d.getMonth() + 1}</small></div>
+      <div class="tt-allday" style="height:${allDayH}px">${allDay[di].map(ev => `<button type="button" class="allday" data-kind="event" data-id="${esc(ev.id)}" style="--ev:${esc(ev.color)}">${esc(ev.title)}</button>`).join('')}</div>
+      <div class="tt-body" style="height:${hours.length * HOUR_PX}px">${hours.map(() => '<div class="tt-hour"></div>').join('')}${blocks}</div>
+    </div>`;
   }).join('');
 
-  const todays = all.filter(s => +s.day === todayIdx).sort((a, b) => toMin(a.start) - toMin(b.start));
+  const todayIdx = isThisWeek ? new Date().getDay() : -1;
+  const todays = items.filter(i => i.day === todayIdx).sort((a, b) => a.s - b.s);
+  const calNote = !Sync.connected ? ''
+    : !Sync.hasScope('calendar') ? '<p class="warn">כדי לראות את Google Calendar כאן, לחץ "התחבר מחדש" בהגדרות.</p>'
+    : GCal.lastError ? `<p class="warn">שגיאה בטעינת היומן: ${esc(GCal.lastError)}</p>` : '';
 
   root.innerHTML = `
     <section class="panel">
       <div class="toolbar">
         <h2>🕒 מערכת שעות</h2>
-        <button class="btn primary" id="addSlot">＋ הוסף שיעור</button>
+        <div class="row wrap">
+          <button class="btn" id="wkPrev" aria-label="שבוע קודם">→</button>
+          <button class="btn ${isThisWeek ? 'on' : ''}" id="wkToday">השבוע</button>
+          <button class="btn" id="wkNext" aria-label="שבוע הבא">←</button>
+          <span class="muted">${weekStart.getDate()}.${weekStart.getMonth() + 1} – ${weekEnd.getDate()}.${weekEnd.getMonth() + 1}</span>
+          <button class="btn primary" id="addSlot">＋ הוסף שיעור</button>
+        </div>
       </div>
-      ${todays.length ? `<div class="today-strip"><b>היום:</b> ${todays.map(s => `<span class="chip">${esc(s.start)} ${esc(s.course ? courseLabel(s.course) : s.title)} · ${esc(s.stype)}</span>`).join('')}</div>` : ''}
+      ${calNote}
+      ${todays.length ? `<div class="today-strip"><b>היום:</b> ${todays.map(i => `<span class="chip"><span dir="ltr">${hhmm(i.s)}</span> ${esc(i.title)}</span>`).join('')}</div>` : ''}
       <div class="tt-scroll">
         <div class="tt" style="--days:${days}">
-          <div class="tt-times"><div class="tt-head"></div><div class="tt-body">${hours.map(h => `<div class="tt-hour"><span>${String(h).padStart(2, '0')}:30</span></div>`).join('')}</div></div>
+          <div class="tt-times"><div class="tt-head"></div><div class="tt-allday" style="height:${allDayH}px"></div><div class="tt-body">${hours.map(m => `<div class="tt-hour"><span>${hhmm(m)}</span></div>`).join('')}</div></div>
           ${cols}
         </div>
       </div>
-      <p class="hint">לחץ על משבצת ריקה כדי להוסיף שיעור ביום הזה.</p>
+      <p class="hint">שיעורים שהוספת כאן חוזרים כל שבוע. אירועים מ-Google Calendar מוצגים בצבע של היומן שלהם. לחץ על משבצת ריקה כדי להוסיף שיעור.</p>
     </section>`;
 
+  $('#wkPrev').onclick = () => { ttWeek = new Date(weekStart); ttWeek.setDate(ttWeek.getDate() - 7); render(); };
+  $('#wkNext').onclick = () => { ttWeek = new Date(weekStart); ttWeek.setDate(ttWeek.getDate() + 7); render(); };
+  $('#wkToday').onclick = () => { ttWeek = startOfWeek(new Date()); render(); };
   $('#addSlot').onclick = () => editSlot(null);
-  $$('.slot', root).forEach(el => el.onclick = e => { e.stopPropagation(); editSlot(el.dataset.id); });
+  $$('[data-kind]', root).forEach(el => el.onclick = e => {
+    e.stopPropagation();
+    if (el.dataset.kind === 'slot') editSlot(el.dataset.id);
+    else showEvent(GCal.eventsFor(weekStart).find(ev => ev.id === el.dataset.id));
+  });
   $$('.tt-col .tt-body', root).forEach(body => body.onclick = e => {
     const rect = body.getBoundingClientRect();
-    const mins = TT_ORIGIN + Math.floor(((e.clientY - rect.top) / rect.height) * total / 60) * 60;
-    const hh = m => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
-    editSlot(null, { day: +body.parentElement.dataset.day, start: hh(mins), end: hh(mins + 120) });
+    const mins = startMin + Math.floor(((e.clientY - rect.top) / rect.height) * total / 60) * 60;
+    editSlot(null, { day: +body.parentElement.dataset.day, start: hhmm(mins), end: hhmm(mins + 120) });
   });
+
+  GCal.fetchWeek(weekStart, () => { if (currentView === 'timetable' && ttWeek === weekStart) render(); });
+}
+
+function showEvent(ev) {
+  if (!ev) return;
+  const fmtT = s => new Date(s).toLocaleString('he-IL', { weekday: 'long', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' });
+  openModal(`
+    <h2>${esc(ev.title)}</h2>
+    <p class="muted"><span class="ev-dot" style="--ev:${esc(ev.color)}"></span> ${esc(ev.calendar)}</p>
+    <p>${ev.allDay ? 'כל היום' : `${fmtT(ev.start)} – ${new Date(ev.end).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`}</p>
+    ${ev.location ? `<p>📍 ${esc(ev.location)}</p>` : ''}
+    ${ev.description ? `<p class="ev-desc">${esc(ev.description.replace(/<[^>]+>/g, ' '))}</p>` : ''}
+    <div class="actions">
+      <a class="btn" href="${esc(ev.link)}" target="_blank" rel="noopener">פתח ב-Google Calendar</a>
+      <span class="spacer"></span>
+      <button class="btn primary" value="cancel">סגור</button>
+    </div>`, () => {});
 }
 
 function editSlot(id, defaults = {}) {
@@ -565,6 +613,52 @@ function editSlot(id, defaults = {}) {
 }
 
 // ---------- settings ----------
+function googleSection(st) {
+  const missing = ['calendar', 'tasks'].filter(s => !Sync.hasScope(s));
+  if (missing.length && Sync.token()) {
+    return `
+    <section class="panel narrow">
+      <h2>📅 Google Calendar ו-Google Tasks</h2>
+      <p>כדי להציג את היומן במערכת השעות ולסנכרן משימות, צריך לאשר הרשאות חדשות פעם אחת.</p>
+      <p class="muted">לפני כן ודא שב-Google Cloud Console הפעלת את <b>Google Calendar API</b> ואת <b>Google Tasks API</b> (APIs &amp; Services → Library).</p>
+      <button class="btn primary" id="grantMore">🔓 אשר גישה ליומן ולמשימות</button>
+    </section>`;
+  }
+  const cals = GCal.calendars;
+  const chosen = Array.isArray(st.calendarIds) ? st.calendarIds : [];
+  return `
+    <section class="panel narrow">
+      <h2>📅 יומנים במערכת השעות</h2>
+      <p class="muted">אירועים מהיומנים המסומנים מוצגים במערכת השעות (קריאה בלבד).</p>
+      ${cals ? `<div class="cal-picks">${cals.map(c => `
+        <label class="check"><input type="checkbox" class="calPick" value="${esc(c.id)}" ${chosen.includes(c.id) ? 'checked' : ''}>
+        <span class="ev-dot" style="--ev:${esc(c.color)}"></span>${esc(c.summary)}</label>`).join('')}</div>`
+        : `<p class="muted">טוען יומנים…</p>`}
+      ${GCal.lastError ? `<p class="warn">${esc(GCal.lastError)}</p>` : ''}
+    </section>
+
+    <section class="panel narrow">
+      <h2>✅ Google Tasks</h2>
+      <label class="check"><input type="checkbox" id="tasksSync" ${st.tasksSync !== false ? 'checked' : ''}> סנכרון דו-כיווני של המשימות עם הרשימה "${esc(TASKS_LIST_TITLE)}" ב-Google Tasks</label>
+      <p class="muted">משימה שתוסיף, תסמן או תמחק כאן תופיע גם ב-Google Tasks, ולהפך. Google Tasks שומר רק תאריך, בלי שעה.</p>
+      ${Sync.hookError ? `<p class="warn">${esc(Sync.hookError)}</p>` : ''}
+    </section>`;
+}
+
+function bindGoogleSection(root) {
+  $('#grantMore', root)?.addEventListener('click', () => Sync.authorize());
+  if (!$('.cal-picks', root) && Sync.connected && Sync.hasScope('calendar') && Sync.token() && !GCal.lastError) {
+    GCal.listCalendars().then(() => GCal.selectedIds()).then(() => { if (currentView === 'settings') render(); })
+      .catch(e => { GCal.lastError = e.message; if (currentView === 'settings') render(); });
+  }
+  $$('.calPick', root).forEach(cb => cb.onchange = () => {
+    Store.put('meta', 'settings', { calendarIds: $$('.calPick:checked', root).map(x => x.value) });
+    GCal.weeks = {}; GCal.fetchedAt = {};
+  });
+  const ts = $('#tasksSync', root);
+  if (ts) ts.onchange = () => { Store.put('meta', 'settings', { tasksSync: ts.checked }); if (ts.checked) Sync.schedule(100); };
+}
+
 function renderSettings(root) {
   const last = Sync.lastSync ? new Date(Sync.lastSync).toLocaleString('he-IL') : 'אף פעם';
   const st = settings();
@@ -590,7 +684,7 @@ function renderSettings(root) {
         <summary>איך משיגים Client ID? (חד פעמי, 5 דקות)</summary>
         <ol class="howto">
           <li>היכנס ל-<a href="https://console.cloud.google.com/projectcreate" target="_blank" rel="noopener">Google Cloud Console</a> וצור פרויקט חדש.</li>
-          <li>תחת <b>APIs &amp; Services → Library</b> הפעל את <b>Google Drive API</b>.</li>
+          <li>תחת <b>APIs &amp; Services → Library</b> הפעל את <b>Google Drive API</b>, <b>Google Calendar API</b> ו-<b>Google Tasks API</b>.</li>
           <li>תחת <b>OAuth consent screen</b>: בחר External, מלא שם ומייל, והוסף את עצמך ב-<b>Test users</b>. אחרי זה לחץ <b>Publish app</b> כדי שהחיבור לא יפוג כל 7 ימים.</li>
           <li>תחת <b>Credentials → Create credentials → OAuth client ID</b>: בחר <b>Web application</b>.</li>
           <li>ב-<b>Authorized JavaScript origins</b> הוסף: <code dir="ltr">${esc(location.origin)}</code></li>
@@ -599,6 +693,8 @@ function renderSettings(root) {
         </ol>
       </details>
     </section>
+
+    ${Sync.connected ? googleSection(st) : ''}
 
     <section class="panel narrow">
       <h2>🎓 התואר</h2>
@@ -629,6 +725,7 @@ function renderSettings(root) {
 
   const saveClientId = () => { Sync.clientId = $('#clientId').value; };
   $('#clientId').onchange = saveClientId;
+  bindGoogleSection(root);
   $('#connect')?.addEventListener('click', () => {
     saveClientId();
     if (!Sync.clientId) return alert('הדבק קודם Client ID');
@@ -676,17 +773,21 @@ function renderSettings(root) {
 }
 
 // ---------- boot ----------
-Store.load();
-seedData();
-Store.onChange(() => render());
-Sync.onStatus(state => {
-  renderSyncBtn(state);
-  if (currentView === 'settings' && document.activeElement?.id !== 'clientId') render();
+// Runs after every script (including google.js) has loaded.
+window.addEventListener('DOMContentLoaded', () => {
+  Store.load();
+  seedData();
+  Store.onChange(() => render());
+  Sync.onStatus(state => {
+    renderSyncBtn(state);
+    if (currentView === 'settings' && document.activeElement?.id !== 'clientId') render();
+  });
+  try { currentView = localStorage.getItem('pp_view') || 'map'; } catch {}
+  if (!$(`#tabs [data-view="${currentView}"]`)) currentView = 'map';
+  go(currentView);
+  Sync.start();
+  renderSyncBtn(Sync.state);
 });
-try { currentView = localStorage.getItem('pp_view') || 'map'; } catch {}
-go(currentView);
-Sync.start();
-renderSyncBtn(Sync.state);
 
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   navigator.serviceWorker.register('sw.js').catch(() => {});

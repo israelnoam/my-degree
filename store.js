@@ -13,7 +13,11 @@ const LS_LAST_SYNC = 'pp_last_sync';
 const LS_SILENT_AT = 'pp_silent_auth_at';
 
 const DRIVE_FILE_NAME = 'personal-planner.json';
-const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
+const SCOPES = {
+  drive: 'https://www.googleapis.com/auth/drive.appdata',
+  calendar: 'https://www.googleapis.com/auth/calendar.readonly',
+  tasks: 'https://www.googleapis.com/auth/tasks',
+};
 
 function lsGet(key, fallback = null) {
   try { const v = localStorage.getItem(key); return v === null ? fallback : v; } catch { return fallback; }
@@ -58,9 +62,18 @@ const Store = {
   remove(kind, id) {
     const key = `${kind}:${id}`;
     if (!this.recs[key]) return;
-    this.recs[key] = { kind, id, u: Date.now(), del: true };
+    // Keep the Google Tasks id on the tombstone so the delete reaches Google too.
+    this.recs[key] = { kind, id, u: Date.now(), del: true, gid: this.recs[key].gid };
     this.persist();
     this.emit();
+  },
+  // For sync bookkeeping: writes without triggering another sync round.
+  putRaw(kind, id, data) {
+    const key = `${kind}:${id}`;
+    this.recs[key] = { ...(this.recs[key] || {}), ...data, kind, id };
+    this.persist();
+    this.emit(true);
+    return this.recs[key];
   },
   // Seeds only fill gaps and use u=0, so anything already edited anywhere wins.
   seed(kind, id, data) {
@@ -97,6 +110,8 @@ const Sync = {
   timer: null,
   running: null,
   listeners: [],
+  hooks: [],
+  hookError: '',
 
   onStatus(fn) { this.listeners.push(fn); },
   setState(state, message = '') {
@@ -117,6 +132,11 @@ const Sync = {
     return null;
   },
 
+  // Scopes the current token actually carries (older connections only had Drive).
+  hasScope(name) {
+    try { return (JSON.parse(lsGet(LS_TOKEN, 'null'))?.scope || '').includes(SCOPES[name]); } catch { return false; }
+  },
+
   redirectUri() { return location.origin + location.pathname; },
 
   // Full-page redirect (works inside installed PWAs on iOS, where popups don't).
@@ -128,7 +148,7 @@ const Sync = {
       client_id: this.clientId,
       redirect_uri: this.redirectUri(),
       response_type: 'token',
-      scope: DRIVE_SCOPE,
+      scope: Object.values(SCOPES).join(' '),
       include_granted_scopes: 'true',
       state: stateToken,
     });
@@ -148,6 +168,7 @@ const Sync = {
       lsSet(LS_TOKEN, JSON.stringify({
         access_token: p.get('access_token'),
         exp: Date.now() + Number(p.get('expires_in') || 3600) * 1000,
+        scope: p.get('scope') || '',
       }));
       lsSet(LS_CONNECTED, '1');
     } else if (p.get('error')) {
@@ -223,7 +244,18 @@ const Sync = {
       }
       const { merged, localChanged, remoteChanged } = mergeRecords(Store.recs, remote);
       if (localChanged) Store.replaceAll(merged);
-      if (remoteChanged || !this.fileId) await this.upload(merged);
+      // Extra syncs (Google Tasks) run between pull and push, so every device
+      // sees the same Google ids before it creates anything new.
+      let hooksChanged = false;
+      this.hookError = '';
+      for (const hook of this.hooks) {
+        try { hooksChanged = (await hook()) || hooksChanged; } catch (e) {
+          if (e.auth) throw e;
+          console.warn('sync hook', e);
+          this.hookError = e.message;
+        }
+      }
+      if (remoteChanged || hooksChanged || !this.fileId) await this.upload(Store.recs);
       lsSet(LS_LAST_SYNC, String(Date.now()));
       this.setState('ok');
     } catch (e) {
