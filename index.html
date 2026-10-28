@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>התואר שלי</title>
+  <meta name="theme-color" content="#0b1220">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="התואר שלי">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <img src="icons/icon.svg" alt="" width="34" height="34">
+      <span>התואר שלי</span>
+    </div>
+    <div class="stats" id="stats"></div>
+    <button class="sync-btn" id="syncBtn" type="button" title="סנכרון עם Google">
+      <span class="dot"></span><span class="label">לא מסונכרן</span>
+    </button>
+  </header>
+
+  <nav class="tabs" id="tabs">
+    <button data-view="map"><span>🎓</span>מפת קורסים</button>
+    <button data-view="tasks"><span>📝</span>משימות</button>
+    <button data-view="calendar"><span>📅</span>לוח שנה</button>
+    <button data-view="timetable"><span>🕒</span>מערכת שעות</button>
+    <button data-view="settings"><span>⚙️</span>הגדרות</button>
+  </nav>
+
+  <main id="view"></main>
+
+  <dialog id="modal">
+    <form method="dialog" id="modalForm"></form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script src="data.js"></script>
+  <script src="store.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
