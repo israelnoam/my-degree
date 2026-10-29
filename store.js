@@ -12,7 +12,7 @@ const LS_CONNECTED = 'pp_google_connected';
 const LS_LAST_SYNC = 'pp_last_sync';
 const LS_SILENT_AT = 'pp_silent_auth_at';
 
-const BUILT_IN_CLIENT_ID = '';
+const BUILT_IN_CLIENT_ID = '473565270507-slu5h6ngt3sb0210vt975lc1d8ru1k4l.apps.googleusercontent.com';
 const DRIVE_FILE_NAME = 'personal-planner.json';
 const SCOPES = {
   drive: 'https://www.googleapis.com/auth/drive.appdata',
