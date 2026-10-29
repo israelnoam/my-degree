@@ -215,6 +215,17 @@ main { max-width: 1400px; margin: 0 auto; padding: 14px 20px 40px; }
 .ev-desc { white-space: pre-wrap; color: var(--muted); font-size: .9rem; max-height: 200px; overflow: auto; }
 .cal-picks { display: flex; flex-direction: column; gap: 4px; }
 .cal-picks label.check { margin: 0; padding: 6px 0; gap: 10px; }
+.cat-picks, .list-map { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.cat-pick { flex-direction: row; align-items: center; gap: 10px; margin: 0; padding: 8px 10px; color: var(--text);
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; cursor: pointer; }
+.cat-pick input { width: auto; }
+.cat-info { display: flex; flex-direction: column; min-width: 0; }
+.cat-info small { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ev-dot.big { width: 16px; height: 16px; }
+.badge { font-size: .72rem; font-weight: 600; color: var(--green); margin-inline-start: 6px; }
+.list-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+.list-row select { width: auto; max-width: 60%; padding: 6px 10px; font-size: .9rem; }
 .btn.on { border-color: var(--blue); }
 a.btn { text-decoration: none; color: var(--text); }
 

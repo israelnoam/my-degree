@@ -639,34 +639,79 @@ function googleSection(st) {
   }
   const cals = GCal.calendars;
   const chosen = Array.isArray(st.calendarIds) ? st.calendarIds : [];
+  const cats = GCal.categories;
+  const shown = st.calCategories;
+  const multiCal = chosen.length > 1;
+  const lists = GTasks.lists;
+  const listMap = lists ? GTasks.courseMap(lists) : {};
+  const overrides = st.taskListMap || {};
+  const courseOpts = sel => `<option value="">— לא לסנכרן —</option>` +
+    courses().map(c => `<option value="${esc(c.code)}" ${sel === c.code ? 'selected' : ''}>${esc(c.name)}</option>`).join('');
+
   return `
     <section class="panel narrow">
-      <h2>📅 יומנים במערכת השעות</h2>
-      <p class="muted">אירועים מהיומנים המסומנים מוצגים במערכת השעות (קריאה בלבד).</p>
+      <h2>📅 היומן במערכת השעות</h2>
+      <p class="muted">מערכת השעות מציגה אירועים מהיומנים המסומנים, רק מהקטגוריות (צבעים) שבחרת. קריאה בלבד.</p>
+      ${GCal.lastError ? errorNote('לא הצלחתי לטעון את היומן', GCal.lastError) : ''}
+      <h3>יומנים</h3>
       ${cals ? `<div class="cal-picks">${cals.map(c => `
         <label class="check"><input type="checkbox" class="calPick" value="${esc(c.id)}" ${chosen.includes(c.id) ? 'checked' : ''}>
-        <span class="ev-dot" style="--ev:${esc(c.color)}"></span>${esc(c.summary)}</label>`).join('')}</div>`
+        <span class="ev-dot" style="--ev:${esc(c.color)}"></span>${esc(c.summary)}${c.primary ? ' <small class="muted">(ראשי)</small>' : ''}</label>`).join('')}</div>`
         : `<p class="muted">טוען יומנים…</p>`}
-      ${GCal.lastError ? errorNote('לא הצלחתי לטעון את היומנים', GCal.lastError) : ''}
+      <h3>קטגוריות לפי צבע</h3>
+      <p class="muted">Instinct צובע כל אירוע לפי הקטגוריה שלו. סמן את צבעי הלימודים.</p>
+      ${cats ? (cats.length ? `<div class="cat-picks">${cats.map(c => `
+        <label class="cat-pick"><input type="checkbox" class="catPick" value="${esc(c.key)}" ${(Array.isArray(shown) ? shown.includes(c.key) : c.study) ? 'checked' : ''}>
+          <span class="ev-dot big" style="--ev:${esc(c.color)}"></span>
+          <span class="cat-info"><b>${c.count} אירועים${multiCal ? ` · ${esc(c.calendar)}` : ''}${c.study ? ' <span class="badge">📚 נראה כמו לימודים</span>' : ''}</b>
+          <small>${c.samples.map(esc).join(' · ')}</small></span>
+        </label>`).join('')}</div>` : '<p class="muted">אין אירועים ב-10 השבועות הקרובים ביומנים שנבחרו.</p>')
+        : (cals ? '<p class="muted">סורק את היומן…</p>' : '')}
+      ${cats ? '<button class="btn" id="rescanCats">🔄 סרוק שוב</button>' : ''}
     </section>
 
     <section class="panel narrow">
       <h2>✅ Google Tasks</h2>
-      <label class="check"><input type="checkbox" id="tasksSync" ${st.tasksSync !== false ? 'checked' : ''}> סנכרון דו-כיווני של המשימות עם הרשימה "${esc(TASKS_LIST_TITLE)}" ב-Google Tasks</label>
-      <p class="muted">משימה שתוסיף, תסמן או תמחק כאן תופיע גם ב-Google Tasks, ולהפך. Google Tasks שומר רק תאריך, בלי שעה.</p>
+      <label class="check"><input type="checkbox" id="tasksSync" ${st.tasksSync !== false ? 'checked' : ''}> סנכרון דו-כיווני של המשימות עם Google Tasks</label>
+      <p class="muted">כל רשימה ב-Google Tasks שמשויכת לקורס (כמו הרשימות ש-Instinct יצר) מסתנכרנת עם המשימות של אותו קורס. משימות בלי קורס נכנסות לרשימה "${esc(TASKS_LIST_TITLE)}". Google Tasks שומר רק תאריך, בלי שעה.</p>
       ${Sync.hookError ? errorNote('סנכרון המשימות נכשל', Sync.hookError) : ''}
+      ${lists ? `<div class="list-map">${lists.map(l => l.id === st.tasksListId
+        ? `<div class="list-row"><span>📋 ${esc(l.title)}</span><small class="muted">משימות בלי קורס</small></div>`
+        : `<div class="list-row"><span>📋 ${esc(l.title)}</span>
+            <select class="listPick" data-list="${esc(l.id)}">${courseOpts(l.id in overrides ? overrides[l.id] : (listMap[l.id] || ''))}</select></div>`).join('')}</div>`
+        : (Sync.hasScope('tasks') && st.tasksSync !== false && !Sync.hookError ? '<p class="muted">טוען רשימות…</p>' : '')}
     </section>`;
 }
 
+let googleSettingsLoading = false;
 function bindGoogleSection(root) {
   $('#grantMore', root)?.addEventListener('click', () => Sync.authorize());
-  if (!$('.cal-picks', root) && Sync.connected && Sync.hasScope('calendar') && Sync.token() && !GCal.lastError) {
-    GCal.listCalendars().then(() => GCal.selectedIds()).then(() => { if (currentView === 'settings') render(); })
-      .catch(e => { GCal.lastError = e; if (currentView === 'settings') render(); });
+
+  // Load calendars, color categories and task lists once per visit.
+  const needCal = Sync.hasScope('calendar') && (!GCal.calendars || !GCal.categories) && !GCal.lastError;
+  const needLists = Sync.hasScope('tasks') && settings().tasksSync !== false && !GTasks.lists && !Sync.hookError;
+  if (Sync.connected && Sync.token() && (needCal || needLists) && !googleSettingsLoading) {
+    googleSettingsLoading = true;
+    const rerender = () => { if (currentView === 'settings') render(); };
+    const jobs = [];
+    if (needCal) jobs.push(GCal.listCalendars().then(() => GCal.selectedIds()).then(rerender).then(() => GCal.scanCategories()).catch(e => { GCal.lastError = e; }));
+    if (needLists) jobs.push(GTasks.fetchLists().catch(e => { Sync.hookError = e; }));
+    Promise.all(jobs).finally(() => { googleSettingsLoading = false; rerender(); });
   }
+
+  const resetCalendar = () => { GCal.weeks = {}; GCal.fetchedAt = {}; };
   $$('.calPick', root).forEach(cb => cb.onchange = () => {
     Store.put('meta', 'settings', { calendarIds: $$('.calPick:checked', root).map(x => x.value) });
-    GCal.weeks = {}; GCal.fetchedAt = {};
+    GCal.categories = null; resetCalendar();
+    render();
+  });
+  $$('.catPick', root).forEach(cb => cb.onchange = () => {
+    Store.put('meta', 'settings', { calCategories: $$('.catPick:checked', root).map(x => x.value) });
+  });
+  $('#rescanCats', root)?.addEventListener('click', () => { GCal.categories = null; resetCalendar(); render(); });
+  $$('.listPick', root).forEach(sel => sel.onchange = () => {
+    Store.put('meta', 'settings', { taskListMap: { ...(settings().taskListMap || {}), [sel.dataset.list]: sel.value } });
+    Sync.schedule(100);
   });
   const ts = $('#tasksSync', root);
   if (ts) ts.onchange = () => { Store.put('meta', 'settings', { tasksSync: ts.checked }); if (ts.checked) Sync.schedule(100); };
