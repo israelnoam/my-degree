@@ -267,6 +267,21 @@ const GTasks = {
     return map;
   },
 
+  // Instinct keeps a task list for each course you take this semester, so a
+  // course with its own list and no grade yet is one you're studying now.
+  // Done once per course, so unmarking it by hand sticks.
+  markCurrentCourses(map) {
+    const st = settings();
+    const done = new Set(st.autoActive || []);
+    const fresh = Object.values(map).filter(code => !done.has(code));
+    if (!fresh.length) return;
+    for (const code of fresh) {
+      const c = courseByCode(code);
+      if (c && c.status === 'none') Store.put('course', code, { status: 'active' });
+    }
+    Store.put('meta', 'settings', { autoActive: [...done, ...fresh] });
+  },
+
   async listAll(listId) {
     const all = [];
     let pageToken = '';
@@ -302,6 +317,7 @@ const GTasks = {
     const lists = await this.fetchLists();
     const defaultList = await this.ensureDefaultList(lists);
     const map = this.courseMap(lists);
+    this.markCurrentCourses(map);
     const listForCourse = Object.fromEntries(Object.entries(map).map(([id, code]) => [code, id]));
     const synced = [...new Set([defaultList, ...Object.keys(map)])];
     const targetFor = r => listForCourse[r.course] || defaultList;

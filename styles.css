@@ -113,6 +113,20 @@ main { max-width: 1400px; margin: 0 auto; padding: 14px 20px 40px; }
 .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .btn.primary:hover { filter: brightness(1.08); }
 .btn.danger { color: var(--red); }
+.btn.big { padding: 12px 22px; font-size: 1rem; }
+.btn[disabled] { opacity: .5; cursor: default; }
+.connect-card { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  border-color: var(--accent); background: linear-gradient(135deg, #2a2412, var(--panel) 60%); }
+.connect-card h2 { margin-bottom: 4px; }
+.connect-card p { margin: 0; max-width: 640px; }
+.gbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; margin: 12px 0; font-size: .9rem; }
+.gbar.ok b { color: var(--green); }
+.gbar.bad b { color: var(--orange); }
+.import-list { display: flex; flex-direction: column; gap: 4px; max-height: 45dvh; overflow-y: auto; margin: 10px 0; }
+.import-row { display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
+.import-grade { font-weight: 800; color: var(--green); font-size: 1.05rem; white-space: nowrap; }
 .btn.danger:hover { border-color: var(--red); }
 
 /* ---------- curriculum map ---------- */

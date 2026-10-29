@@ -12,6 +12,7 @@ const LS_CONNECTED = 'pp_google_connected';
 const LS_LAST_SYNC = 'pp_last_sync';
 const LS_SILENT_AT = 'pp_silent_auth_at';
 
+const BUILT_IN_CLIENT_ID = '';
 const DRIVE_FILE_NAME = 'personal-planner.json';
 const SCOPES = {
   drive: 'https://www.googleapis.com/auth/drive.appdata',
@@ -119,7 +120,9 @@ const Sync = {
     this.listeners.forEach(fn => fn(state, message));
   },
 
-  get clientId() { return (lsGet(LS_CLIENT_ID, '') || '').trim(); },
+  // Built into the app so each device only needs the "connect" tap. A Client ID is
+  // a public identifier, not a secret; Google only accepts it from this site's address.
+  get clientId() { return (lsGet(LS_CLIENT_ID, '') || BUILT_IN_CLIENT_ID).trim(); },
   set clientId(v) { lsSet(LS_CLIENT_ID, v ? v.trim() : null); },
   get connected() { return lsGet(LS_CONNECTED) === '1'; },
   get lastSync() { return Number(lsGet(LS_LAST_SYNC, 0)); },

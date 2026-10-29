@@ -102,6 +102,65 @@ $('#syncBtn').addEventListener('click', () => {
   Sync.syncNow();
 });
 
+// One card, one button: shown at the top of the map until Google is fully connected.
+function connectCard() {
+  if (!Sync.connected) {
+    return `<section class="panel connect-card">
+      <div><h2>☁️ חבר את חשבון Google</h2>
+      <p class="muted">לחיצה אחת בכל מכשיר, והציונים, המשימות ומערכת השעות יהיו זהים במחשב, באייפד ובטלפון. גם היומן ו-Google Tasks (כולל מה ש-Instinct מוסיף) יופיעו כאן.</p></div>
+      <button class="btn primary big" id="connectNow">התחבר עם Google</button>
+    </section>`;
+  }
+  if (Sync.token() && (!Sync.hasScope('calendar') || !Sync.hasScope('tasks'))) {
+    return `<section class="panel connect-card">
+      <div><h2>📅 עוד צעד אחד</h2>
+      <p class="muted">אשר לאפליקציה לקרוא את היומן ולסנכרן את Google Tasks.</p></div>
+      <button class="btn primary big" id="connectNow">אשר גישה</button>
+    </section>`;
+  }
+  return '';
+}
+function connectGoogle() {
+  if (!Sync.clientId) return go('settings');
+  Sync.authorize();
+}
+function bindConnectCard(root) {
+  $('#connectNow', root)?.addEventListener('click', connectGoogle);
+}
+
+// Status line + button at the top of the tasks page (Google Tasks) and timetable (Google Calendar).
+function googleBar(kind) {
+  const name = kind === 'tasks' ? 'Google Tasks' : 'Google Calendar';
+  const icon = kind === 'tasks' ? '✅' : '📅';
+  if (!Sync.connected) {
+    return `<div class="gbar"><span>${icon} ${name}: <b>לא מחובר</b></span><button class="btn primary" data-gbar="connect">התחבר עם Google</button></div>`;
+  }
+  if (!Sync.hasScope(kind)) {
+    return `<div class="gbar"><span>${icon} ${name}: <b>צריך אישור</b></span><button class="btn primary" data-gbar="connect">אשר גישה</button></div>`;
+  }
+  const busy = kind === 'tasks' ? Sync.state === 'syncing' : GCal.loading[ymd(ttWeek)];
+  const when = kind === 'tasks' ? Sync.lastSync : GCal.fetchedAt[ymd(ttWeek)];
+  const ok = kind === 'tasks' ? !Sync.hookError : !GCal.lastError;
+  const status = busy ? 'מסנכרן…' : !ok ? 'יש בעיה (פרטים למטה)'
+    : when ? `מסונכרן · ${new Date(when).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}` : 'מתחבר…';
+  return `<div class="gbar ${ok ? 'ok' : 'bad'}"><span>${icon} ${name}: <b>${status}</b></span>
+    <button class="btn" data-gbar="sync" ${busy ? 'disabled' : ''}>🔄 ${kind === 'tasks' ? 'סנכרן' : 'רענן'}</button></div>`;
+}
+function bindGoogleBar(root) {
+  $$('[data-gbar]', root).forEach(b => b.onclick = () => {
+    if (b.dataset.gbar === 'connect') return connectGoogle();
+    b.disabled = true;
+    if (currentView === 'tasks') {
+      Sync.hookError = null;
+      Sync.syncNow().then(() => render());
+    } else {
+      GCal.lastError = null;
+      GCal.fetchWeek(ttWeek, () => render(), true).then(() => render());
+      render();
+    }
+  });
+}
+
 // ---------- routing ----------
 let currentView = 'map';
 function go(view) {
@@ -148,13 +207,17 @@ function renderMap(root) {
   if (bySem[0].length) rows.push(semesterRow(0, bySem[0]));
 
   root.innerHTML = `
+    ${connectCard()}
     <div class="map-layout">
       <section class="panel map-panel">
         <div class="toolbar">
           <div class="legend">
             ${['locked', 'open', 'active', 'done'].map(k => `<span class="lg ${k}"><i></i>${STATUS[k].label}</span>`).join('')}
           </div>
-          <button class="btn primary" id="addCourse">＋ הוסף קורס</button>
+          <div class="row wrap">
+            <button class="btn" id="gradeSheetBtn">📄 ייבוא גיליון ציונים</button>
+            <button class="btn primary" id="addCourse">＋ הוסף קורס</button>
+          </div>
         </div>
         <p class="hint">לחץ על קורס כדי לסמן סטטוס, ציון ודרישות קדם. מעבר עכבר מדגיש את שרשרת הקדם.</p>
         <div class="semesters">${rows.join('')}</div>
@@ -163,6 +226,8 @@ function renderMap(root) {
     </div>`;
 
   $('#addCourse').onclick = () => editCourse(null);
+  $('#gradeSheetBtn').onclick = () => $('#gradeFile').click();
+  bindConnectCard(root);
   $$('.course', root).forEach(el => {
     el.onclick = () => editCourse(el.dataset.code);
     el.onmouseenter = () => highlightChain(el.dataset.code, true);
@@ -369,6 +434,7 @@ function renderTasks(root) {
         <h2>📝 משימות ומבחנים</h2>
         <button class="btn primary" id="addTask">＋ משימה חדשה</button>
       </div>
+      ${googleBar('tasks')}
       ${Sync.hookError ? errorNote('הסנכרון עם Google Tasks לא עובד', Sync.hookError) : ''}
       <div class="filters">
         <div class="seg small">
@@ -380,6 +446,7 @@ function renderTasks(root) {
       ${list.length ? `<ul class="task-list">${list.map(taskItem).join('')}</ul>` : '<p class="empty">אין משימות כאן.</p>'}
     </section>`;
   $('#addTask').onclick = () => editTask(null);
+  bindGoogleBar(root);
   $$('[data-f]', root).forEach(b => b.onclick = () => { taskFilter = b.dataset.f; render(); });
   $('#fType').onchange = e => { taskType = e.target.value; render(); };
   $('#fCourse').onchange = e => { taskCourse = e.target.value; render(); };
@@ -522,9 +589,8 @@ function renderTimetable(root) {
 
   const todayIdx = isThisWeek ? new Date().getDay() : -1;
   const todays = items.filter(i => i.day === todayIdx).sort((a, b) => a.s - b.s);
-  const calNote = !Sync.connected ? ''
-    : !Sync.hasScope('calendar') ? '<p class="warn">כדי לראות את Google Calendar כאן, לחץ "התחבר מחדש" בהגדרות.</p>'
-    : GCal.lastError ? errorNote('לא הצלחתי לטעון את היומן', GCal.lastError) : '';
+  const calNote = googleBar('calendar') +
+    (Sync.connected && Sync.hasScope('calendar') && GCal.lastError ? errorNote('לא הצלחתי לטעון את היומן', GCal.lastError) : '');
 
   root.innerHTML = `
     <section class="panel">
@@ -553,6 +619,7 @@ function renderTimetable(root) {
   $('#wkNext').onclick = () => { ttWeek = new Date(weekStart); ttWeek.setDate(ttWeek.getDate() + 7); render(); };
   $('#wkToday').onclick = () => { ttWeek = startOfWeek(new Date()); render(); };
   $('#addSlot').onclick = () => editSlot(null);
+  bindGoogleBar(root);
   $$('[data-kind]', root).forEach(el => el.onclick = e => {
     e.stopPropagation();
     if (el.dataset.kind === 'slot') editSlot(el.dataset.id);
@@ -729,17 +796,17 @@ function renderSettings(root) {
         <span class="dot"></span><b>${SYNC_LABELS[Sync.state]}</b>
         <small>סנכרון אחרון: ${last}${Sync.message && Sync.state !== 'ok' ? ` · ${esc(Sync.message)}` : ''}</small>
       </div>
-      <label>Google OAuth Client ID
-        <input id="clientId" dir="ltr" placeholder="xxxxxxxx.apps.googleusercontent.com" value="${esc(Sync.clientId)}">
-      </label>
       <div class="row wrap">
         ${Sync.connected
           ? `<button class="btn primary" id="syncNow">🔄 סנכרן עכשיו</button><button class="btn" id="reconnect">התחבר מחדש</button><button class="btn danger" id="disconnect">התנתק</button>`
-          : `<button class="btn primary" id="connect">🔗 התחבר ל-Google</button>`}
+          : `<button class="btn primary big" id="connect">התחבר עם Google</button>`}
       </div>
       ${!isHttps ? '<p class="warn">⚠️ הסנכרון עובד רק כשהאפליקציה מוגשת מכתובת https (למשל GitHub Pages).</p>' : ''}
-      <details>
-        <summary>איך משיגים Client ID? (חד פעמי, 5 דקות)</summary>
+      <details ${Sync.clientId ? '' : 'open'}>
+        <summary>מתקדם: Client ID</summary>
+        <label>Google OAuth Client ID
+          <input id="clientId" dir="ltr" placeholder="xxxxxxxx.apps.googleusercontent.com" value="${esc(Sync.clientId)}">
+        </label>
         <ol class="howto">
           <li>היכנס ל-<a href="https://console.cloud.google.com/projectcreate" target="_blank" rel="noopener">Google Cloud Console</a> וצור פרויקט חדש.</li>
           <li>תחת <b>APIs &amp; Services → Library</b> הפעל את <b>Google Drive API</b>, <b>Google Calendar API</b> ו-<b>Google Tasks API</b>.</li>
@@ -844,12 +911,13 @@ window.addEventListener('DOMContentLoaded', () => {
   seedData();
   Store.onChange(() => render());
   $('#importFile').onchange = importBackup;
+  $('#gradeFile').onchange = importGradeSheet;
   let shownTaskError = null;
   Sync.onStatus(state => {
     renderSyncBtn(state);
     if (currentView === 'settings' && document.activeElement?.id !== 'clientId') render();
     // Show (or clear) a Google Tasks problem on the tasks page once a sync finishes.
-    if (currentView === 'tasks' && state !== 'syncing' && Sync.hookError?.message !== shownTaskError) render();
+    if (currentView === 'tasks' && state !== 'syncing' && (Sync.hookError?.message !== shownTaskError || $('[data-gbar="sync"][disabled]'))) render();
     if (state !== 'syncing') shownTaskError = Sync.hookError?.message;
   });
   try { currentView = localStorage.getItem('pp_view') || 'map'; } catch {}
