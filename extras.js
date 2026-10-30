@@ -525,10 +525,12 @@ function addHeaderButtons() {
   mk('xSearch', '🔍', 'חיפוש מהיר (Ctrl+K)', openPalette);
   mk('xBell', '🔔', 'התראות', openNotifications, '<i class="badge" hidden></i>');
   mk('xTools', '🧰', 'כלים', openTools);
+  mk('xSettings', '⚙️', 'הגדרות', () => go('settings'));
 }
 
 // Add buttons into the toolbars the views render.
 function injectViewButtons() {
+  $('#xSettings')?.classList.toggle('active', currentView === 'settings');
   const mapTb = $('.map-panel .toolbar .row');
   if (mapTb && !$('#xMapPng')) {
     mapTb.insertAdjacentHTML('afterbegin', '<button class="btn" id="xMapPng" type="button">📸 תמונה</button><button class="btn" id="xMapCmp" type="button">⚖️ השוואה</button>');

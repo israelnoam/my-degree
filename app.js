@@ -120,7 +120,9 @@ function computeStats() {
 }
 
 // ---------- header ----------
+// The stats block (credits, average) is the way into the performance centre.
 $('#stats').addEventListener('click', () => go('performance'));
+$('#stats').title = 'מרכז ביצועים ונתוני תואר';
 function renderStats() {
   const s = computeStats();
   const pct = Math.min(100, (s.doneCredits / s.total) * 100);
@@ -234,6 +236,9 @@ function go(view) {
   currentView = view;
   try { localStorage.setItem('pp_view', view); } catch {}
   $$('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+  // Performance and settings live in the header, not the tab bar.
+  $('#stats').classList.toggle('active', view === 'performance');
+  $('#xSettings')?.classList.toggle('active', view === 'settings');
   render();
   window.scrollTo(0, 0);
 }
@@ -1204,7 +1209,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (state !== 'syncing') shownTaskError = Sync.hookError?.message;
   });
   try { currentView = localStorage.getItem('pp_view') || 'map'; } catch {}
-  if (!$(`#tabs [data-view="${currentView}"]`)) currentView = 'map';
+  if (!$(`#tabs [data-view="${currentView}"]`) && !['performance', 'settings'].includes(currentView)) currentView = 'map';
   go(currentView);
   Sync.start();
   renderSyncBtn(Sync.state);
