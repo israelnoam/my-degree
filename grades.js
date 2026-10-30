@@ -98,8 +98,10 @@ function planGradeImport(parsed) {
 function applyGradeImport(plan) {
   for (const c of plan) {
     const base = c.existing || { code: c.appCode, name: c.name, credits: c.credits, prereqs: [], type: 'elective', notes: '' };
+    // A binary pass you already marked stays one; the sheet still shows the numeric grade.
+    const status = c.existing?.status === 'binary' && c.status === 'done' ? 'binary' : c.status;
     Store.put('course', c.appCode, {
-      ...base, credits: c.credits, sem: c.sem, status: c.status, grade: c.status === 'done' ? c.grade : null,
+      ...base, credits: c.credits, sem: c.sem, status, grade: c.status === 'done' ? c.grade : null,
     });
   }
   Sync.schedule(200);

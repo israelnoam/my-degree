@@ -19,6 +19,7 @@ const STATUS = {
   active: { label: 'בלימוד', icon: '📖' },
   done: { label: 'הושלם', icon: '✅' },
   exempt: { label: 'פטור', icon: '🎫' },
+  binary: { label: 'עובר בינארי', icon: '🎖️' },
 };
 
 function toast(msg) {
@@ -45,12 +46,13 @@ const settings = () => Store.get('meta', 'settings') || { totalCredits: DEGREE_T
 const courses = () => Store.list('course').sort((a, b) => (a.sem - b.sem) || a.code.localeCompare(b.code));
 const courseByCode = code => Store.get('course', code);
 const courseLabel = code => { const c = courseByCode(code); return c ? c.name : code || ''; };
-const semName = n => n === 0 ? 'בחירה / לא משובץ' : (SEMESTER_NAMES[n - 1] || `סמסטר ${n}`);
+const semName = n => n === 0 ? 'בחירה / לא משובץ' : `${SEMESTER_NAMES[n - 1] || `סמסטר ${n}`} · ${semesterYearLabel(n)}`;
 
-function isComplete(c) { return c && (c.status === 'done' || c.status === 'exempt'); }
+// Binary pass (reserve duty): credits count toward the degree, the grade stays out of the average.
+function isComplete(c) { return c && (c.status === 'done' || c.status === 'exempt' || c.status === 'binary'); }
 
 function courseState(c) {
-  if (c.status === 'done' || c.status === 'exempt' || c.status === 'active') return c.status;
+  if (['done', 'exempt', 'binary', 'active'].includes(c.status)) return c.status;
   const prereqs = (c.prereqs || []).map(courseByCode).filter(Boolean);
   return prereqs.every(isComplete) ? 'open' : 'locked';
 }
@@ -177,7 +179,7 @@ $('#tabs').addEventListener('click', e => {
 
 function render() {
   renderStats();
-  const views = { map: renderMap, tasks: renderTasks, timetable: renderTimetable, settings: renderSettings };
+  const views = { map: renderMap, planner: renderPlanner, tasks: renderTasks, timetable: renderTimetable, settings: renderSettings };
   (views[currentView] || renderMap)($('#view'));
 }
 
@@ -219,8 +221,8 @@ function renderMap(root) {
             <button class="btn primary" id="addCourse">＋ הוסף קורס</button>
           </div>
         </div>
-        <p class="hint">לחץ על קורס כדי לסמן סטטוס, ציון ודרישות קדם. מעבר עכבר מדגיש את שרשרת הקדם.</p>
-        <div class="semesters">${rows.join('')}</div>
+        <p class="hint">הקווים מחברים כל קורס לדרישות הקדם שלו. לחץ על קורס לפרטים, ציון ו-CheeseFork; מעבר עכבר מדגיש את השרשרת.</p>
+        <div class="semesters"><svg class="pq-lines" aria-hidden="true"></svg>${rows.join('')}</div>
       </section>
       <aside class="panel side-panel">${upcomingPanel()}</aside>
     </div>`;
@@ -234,6 +236,40 @@ function renderMap(root) {
     el.onmouseleave = () => highlightChain(el.dataset.code, false);
   });
   bindTaskList(root);
+  drawPrereqLines();
+  if (!renderMap.observer) {
+    renderMap.observer = new ResizeObserver(() => { if (currentView === 'map') drawPrereqLines(); });
+  }
+  renderMap.observer.disconnect();
+  renderMap.observer.observe($('.semesters', root));
+}
+
+// Curved lines from each prerequisite (bottom of its card) to the course it unlocks (top).
+function drawPrereqLines() {
+  const wrap = $('.semesters');
+  const svg = $('.pq-lines', wrap);
+  if (!wrap || !svg) return;
+  const box = wrap.getBoundingClientRect();
+  svg.setAttribute('width', wrap.scrollWidth);
+  svg.setAttribute('height', wrap.scrollHeight);
+  const cards = Object.fromEntries($$('.course', wrap).map(el => [el.dataset.code, el]));
+  const paths = [];
+  for (const c of courses()) {
+    const to = cards[c.code];
+    if (!to) continue;
+    for (const p of c.prereqs || []) {
+      const from = cards[p];
+      if (!from) continue;
+      const a = from.getBoundingClientRect(), b = to.getBoundingClientRect();
+      const x1 = a.left + a.width / 2 - box.left, y1 = a.bottom - box.top;
+      const x2 = b.left + b.width / 2 - box.left, y2 = b.top - box.top;
+      if (y2 <= y1) continue; // same row
+      const dy = Math.max(24, (y2 - y1) / 2);
+      const done = isComplete(courseByCode(p)) ? 'met' : '';
+      paths.push(`<path class="ln ${done}" data-from="${esc(p)}" data-to="${esc(c.code)}" d="M${x1},${y1} C${x1},${y1 + dy} ${x2},${y2 - dy} ${x2},${y2}"/>`);
+    }
+  }
+  svg.innerHTML = paths.join('');
 }
 
 function semesterRow(s, list) {
@@ -256,10 +292,12 @@ function semesterRow(s, list) {
 function courseCard(c) {
   const st = courseState(c);
   const grade = c.status === 'done' && c.grade !== null && c.grade !== '' ? `<span class="grade">${esc(c.grade)}</span>` : '';
+  const cat = courseCat(c);
+  const badge = LISTS[cat] ? `<span class="lbadge" style="--lc:${LISTS[cat].color}">${LISTS[cat].short}</span>` : '';
   return `
     <button class="course ${st}" data-code="${esc(c.code)}" type="button">
       <span class="c-name">${esc(c.name)}</span>
-      <span class="c-meta">${esc(c.code)} · ${fmt(c.credits)} נק״ז</span>
+      <span class="c-meta">${badge}${esc(c.code)} · ${fmt(c.credits)} נק״ז</span>
       <span class="c-status">${STATUS[st].icon} ${STATUS[st].label}${grade}</span>
     </button>`;
 }
@@ -277,6 +315,8 @@ function highlightChain(code, on) {
     el.classList.toggle('hl-pre', on && pre.has(k));
     el.classList.toggle('hl-post', on && post.has(k));
   });
+  const chain = new Set([code, ...pre, ...post]);
+  $$('.pq-lines .ln').forEach(l => l.classList.toggle('hl', on && chain.has(l.dataset.from) && chain.has(l.dataset.to)));
 }
 
 function editCourse(code) {
@@ -286,7 +326,7 @@ function editCourse(code) {
   const dependents = code ? others.filter(x => (x.prereqs || []).includes(code)) : [];
   let prereqs = [...(c.prereqs || [])];
 
-  const statusBtns = [['none', 'רגיל'], ['active', 'בלימוד'], ['done', 'הושלם'], ['exempt', 'פטור']]
+  const statusBtns = [['none', 'רגיל'], ['active', 'בלימוד'], ['done', 'הושלם'], ['binary', 'עובר בינארי'], ['exempt', 'פטור']]
     .map(([v, l]) => `<label class="seg-opt"><input type="radio" name="status" value="${v}" ${c.status === v ? 'checked' : ''}><span>${l}</span></label>`).join('');
 
   openModal(`
@@ -300,8 +340,21 @@ function editCourse(code) {
         <option value="0" ${!c.sem ? 'selected' : ''}>${semName(0)}</option>
       </select></label>
       <label>ציון<input name="grade" type="number" min="0" max="100" inputmode="numeric" value="${c.grade ?? ''}" placeholder="—"></label>
+      <label class="full">קטגוריה<select name="list">
+        <option value="mandatory" ${courseCat(c) === 'mandatory' ? 'selected' : ''}>חובה</option>
+        ${Object.entries(LISTS).map(([k, v]) => `<option value="${k}" ${courseCat(c) === k ? 'selected' : ''}>${esc(v.name)}</option>`).join('')}
+      </select></label>
     </div>
-    <div class="field"><span class="field-label">סטטוס</span><div class="seg">${statusBtns}</div></div>
+    <div class="field"><span class="field-label">סטטוס</span><div class="seg wrap">${statusBtns}</div>
+      <small class="muted">עובר בינארי (מילואים): הנק״ז נספרות, הציון לא נכנס לממוצע. נדרש ציון 55+.</small></div>
+    ${code ? courseLinks(c) : ''}
+    ${code && !isComplete(c) ? `<details class="calc"><summary>🎯 מחשבון יעד למבחן</summary>
+      <div class="grid3">
+        <label>ציון יעד בקורס<input id="cTarget" type="number" min="0" max="100" value="85"></label>
+        <label>משקל המבחן %<input id="cWeight" type="number" min="1" max="100" value="70"></label>
+        <label>ציון שאר הרכיבים<input id="cRest" type="number" min="0" max="100" value="90"></label>
+      </div><p id="cOut" class="calc-out"></p></details>` : ''}
+    ${code ? cheeseForkSection(code) : ''}
     <div class="field">
       <span class="field-label">דרישות קדם</span>
       <div class="chips" id="prereqChips"></div>
@@ -332,9 +385,14 @@ function editCourse(code) {
     const data = {
       code: newCode, name: fd.get('name').trim(), credits: +fd.get('credits') || 0, sem: +fd.get('sem'),
       status: fd.get('status') || 'none', grade: g === '' ? null : Math.max(0, Math.min(100, +g)),
-      prereqs, notes: fd.get('notes'), type: c.type || 'elective',
+      prereqs, notes: fd.get('notes'), type: fd.get('list') === 'mandatory' ? 'mandatory' : (c.type === 'mandatory' ? 'elective' : c.type || 'elective'),
+      list: fd.get('list') === 'mandatory' ? null : fd.get('list'),
     };
     if (data.grade !== null && data.status === 'none') data.status = 'done';
+    if (data.status === 'binary' && (data.grade === null || data.grade < RESERVE.binaryMinGrade)) {
+      alert(`עובר בינארי דורש ציון סופי ${RESERVE.binaryMinGrade} ומעלה. הזן את הציון.`);
+      return false;
+    }
     Store.put('course', newCode, data);
     if (action === 'task') setTimeout(() => editTask(null, { course: newCode }), 50);
     else toast('נשמר');
@@ -362,6 +420,14 @@ function editCourse(code) {
       const g = $('[name=grade]', form);
       g.oninput = () => { if (g.value !== '') $('[name=status][value=done]', form).checked = true; };
     }
+    const calc = () => {
+      const t = +$('#cTarget', form).value, w = +$('#cWeight', form).value / 100, r = +$('#cRest', form).value;
+      const need = (t - r * (1 - w)) / w;
+      $('#cOut', form).textContent = need > 100 ? `צריך ${Math.ceil(need)} במבחן – לא אפשרי עם הרכיבים האלה`
+        : need <= 55 ? 'מספיק לעבור את המבחן (55) כדי להגיע ליעד' : `צריך לפחות ${Math.ceil(need)} במבחן`;
+    };
+    if ($('#cTarget', form)) { $$('.calc input', form).forEach(i => i.oninput = calc); calc(); }
+    if (code) fillCheeseFork(form, code);
   });
 }
 
@@ -909,6 +975,9 @@ async function importBackup(e) {
 window.addEventListener('DOMContentLoaded', () => {
   Store.load();
   seedData();
+  // Data updates run after Drive's copy is pulled in (a sync hook), or right away when not syncing.
+  Sync.hooks.unshift(async () => runMigrations());
+  if (!Sync.connected) runMigrations();
   Store.onChange(() => render());
   $('#importFile').onchange = importBackup;
   $('#gradeFile').onchange = importGradeSheet;
