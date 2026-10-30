@@ -503,3 +503,68 @@ h4.bucket-title { margin: 10px 0 6px; font-size: .85rem; }
 .open-head { display: flex; align-items: center; justify-content: space-between; }
 .link-btn { background: none; border: 0; color: var(--blue); cursor: pointer; font-weight: 700; padding: 0; }
 @media (max-width: 760px) { .tasks-stat { flex: 1; } }
+/* ---------- CV generator ---------- */
+.cv-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 16px; align-items: start; }
+.cv-editor { min-width: 0; }
+.cv-block { background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin-bottom: 10px; }
+.cv-block > summary { font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.cv-block .count { font-size: .75rem; color: var(--muted); border: 1px solid var(--line); border-radius: 99px; padding: 0 7px; margin-inline-start: 6px; }
+.cv-entry { border-top: 1px dashed var(--line); padding-top: 10px; margin-top: 10px; }
+.btn.small { padding: 4px 10px; font-size: .8rem; }
+.cv-preview-wrap { position: sticky; top: 84px; min-width: 0; }
+.cv-preview-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+.cv-preview { background: #e9edf3; border-radius: 12px; padding: 14px; max-height: calc(100dvh - 160px); overflow: auto; }
+.cv-targets { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.cv-target { background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; cursor: pointer; display: flex; flex-direction: column; text-align: start; min-width: 140px; }
+.cv-target small { color: var(--muted); }
+.cv-target.on { border-color: var(--blue); box-shadow: 0 0 0 1px var(--blue) inset; }
+.cv-target.add { color: var(--blue); justify-content: center; border-style: dashed; }
+.cv-analysis { background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin-top: 12px; }
+.cv-analysis h3 { margin: 0 0 8px; }
+.chip.miss { border-color: var(--orange); color: var(--orange); }
+.cv-notes { padding-inline-start: 18px; margin: 6px 0 0; font-size: .9rem; display: flex; flex-direction: column; gap: 4px; }
+.narrow-block { max-width: 640px; }
+
+/* the CV page itself: light paper, single column, ATS-friendly */
+.cv-page { background: #fff; color: #1d2433; width: 100%; max-width: 794px; margin: 0 auto; padding: 36px 40px; border-radius: 4px;
+  font: 13.5px/1.45 "Segoe UI", Arial, "Rubik", sans-serif; box-shadow: 0 2px 12px rgba(0,0,0,.15); }
+.cv-page h1 { font-size: 26px; margin: 0; color: #0f172a; }
+.cv-page .cv-label { font-size: 15px; color: #334155; margin-top: 2px; }
+.cv-page .cv-contacts { display: flex; flex-wrap: wrap; gap: 6px; font-size: 12.5px; color: #475569; margin-top: 6px; }
+.cv-page .cv-contacts i { font-style: normal; color: #cbd5e1; }
+.cv-page .cvs { margin-top: 14px; }
+.cv-page .cvs h2 { font-size: 13.5px; text-transform: uppercase; letter-spacing: .06em; color: #0f172a; border-bottom: 1.5px solid #0f172a; padding-bottom: 3px; margin: 0 0 8px; }
+.cv-page .cvs p { margin: 0; }
+.cv-page .cv-item { margin-bottom: 9px; break-inside: avoid; }
+.cv-page .cv-row { display: flex; justify-content: space-between; gap: 12px; }
+.cv-page .cv-meta { color: #475569; white-space: nowrap; font-size: 12.5px; }
+.cv-page .cv-sub { color: #334155; font-style: italic; }
+.cv-page ul { margin: 3px 0 0; padding-inline-start: 18px; }
+.cv-page li { margin: 1px 0; }
+.cv-page .cv-skill { margin-bottom: 3px; }
+.cv-page.t-classic .cvh { text-align: center; }
+.cv-page.t-classic .cv-contacts { justify-content: center; }
+.cv-page.t-modern .cvh { border-inline-start: 5px solid #2563eb; padding-inline-start: 14px; }
+.cv-page.t-modern h1, .cv-page.t-modern .cvs h2 { color: #1d4ed8; }
+.cv-page.t-modern .cvs h2 { border-bottom-color: #93c5fd; }
+.cv-page.t-compact { font-size: 12px; padding: 26px 30px; }
+.cv-page.t-compact h1 { font-size: 21px; }
+.cv-page.t-compact .cvs { margin-top: 9px; }
+.cv-page.t-compact .cv-item { margin-bottom: 5px; }
+
+#cvPrintRoot { display: none; }
+@media print {
+  @page { size: A4; margin: 12mm; }
+  body.printing-cv { background: #fff !important; padding: 0; }
+  body.printing-cv > *:not(#cvPrintRoot) { display: none !important; }
+  body.printing-cv #cvPrintRoot { display: block; }
+  body.printing-cv .cv-page { box-shadow: none; padding: 0; max-width: none; border-radius: 0; }
+}
+@media (max-width: 1100px) {
+  .cv-layout { grid-template-columns: 1fr; }
+  .cv-preview-wrap { position: static; }
+}
+@media (max-width: 760px) {
+  .cv-page { padding: 20px 18px; font-size: 12.5px; }
+  .cv-page .cv-row { flex-direction: column; gap: 0; }
+}

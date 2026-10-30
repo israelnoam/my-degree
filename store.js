@@ -292,6 +292,10 @@ const Sync = {
   ensureToken() {
     if (this.token()) return true;
     const lastTry = Number(lsGet(LS_SILENT_AT, 0));
+    // Never navigate away while you're in the middle of something (open dialog,
+    // or typing in a field); the sync button will ask again later.
+    const busy = document.querySelector('dialog[open]') || document.activeElement?.matches?.('input, textarea, select');
+    if (busy) { if (this.state !== 'needs-auth') this.setState('needs-auth', 'פג תוקף החיבור'); return false; }
     if (navigator.onLine && Date.now() - lastTry > 5 * 60_000) {
       lsSet(LS_SILENT_AT, String(Date.now()));
       this.authorize(true);

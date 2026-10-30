@@ -205,7 +205,7 @@ document.addEventListener('click', e => {
 
 function render() {
   renderStats();
-  const views = { map: renderMap, planner: renderPlanner, performance: renderPerformance, tasks: renderTasks, timetable: renderTimetable, settings: renderSettings };
+  const views = { map: renderMap, planner: renderPlanner, performance: renderPerformance, tasks: renderTasks, timetable: renderTimetable, cv: renderCv, settings: renderSettings };
   (views[currentView] || renderMap)($('#view'));
 }
 
