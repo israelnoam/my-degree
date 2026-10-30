@@ -6,6 +6,7 @@ const CF_BASE = 'https://sap.cheesefork.cf';
 // App semester n → CheeseFork file. Semester 1 is the winter of settings().startYear.
 function cfSemesterKey(n) {
   const start = settings().startYear || 2025;
+  if (n > 100) return `${start + Math.floor((n - 101) / 2)}_202`;
   return `${start + Math.floor((n - 1) / 2)}_${n % 2 ? 200 : 201}`;
 }
 function currentSemesterNumber(date = new Date()) {
@@ -19,6 +20,7 @@ function currentSemesterNumber(date = new Date()) {
 
 const HEB_YEARS = { 2023: 'תשפ״ד', 2024: 'תשפ״ה', 2025: 'תשפ״ו', 2026: 'תשפ״ז', 2027: 'תשפ״ח', 2028: 'תשפ״ט', 2029: 'תש״צ', 2030: 'תשצ״א' };
 function semesterYearLabel(n) {
+  if (n > 100) return `קיץ ${HEB_YEARS[(settings().startYear || 2025) + Math.floor((n - 101) / 2)] || ''}`.trim();
   const year = (settings().startYear || 2025) + Math.floor((n - 1) / 2);
   return `${n % 2 ? 'חורף' : 'אביב'} ${HEB_YEARS[year] || year}`;
 }
@@ -148,7 +150,7 @@ async function fillCheeseFork(form, code) {
     <div class="field"><span class="field-label">דרישות קדם (מהטכניון)</span><div class="pq-line">${prereqHtml(g['מקצועות קדם'])}</div></div>
     ${g['מקצועות צמודים'] ? `<div class="field"><span class="field-label">מקצועות צמודים</span><div class="pq-line">${prereqHtml(g['מקצועות צמודים'])}</div></div>` : ''}
     ${g['אחראים'] ? `<p class="muted">אחראי: ${esc(g['אחראים'])}</p>` : ''}
-    ${g['סילבוס'] ? `<details><summary>סילבוס</summary><p class="cf-syl">${esc(g['סילבוס'])}</p></details>` : ''}
+    ${g['סילבוס'] ? `<details open><summary>📖 סילבוס</summary><p class="cf-syl">${esc(g['סילבוס'])}</p></details>` : ''}
     ${Object.keys(groups).length ? `<details><summary>קבוצות ושעות (${Object.keys(groups).length})</summary><div class="cf-groups">
       ${Object.entries(groups).map(([name, rows]) => `<div class="cf-group">
         <div><b>${esc(name)}</b> · ${rows.map(r => `${esc(r['יום'])} <span dir="ltr">${esc(r['שעה'])}</span>${r['בניין'] ? ` · ${esc(r['בניין'])} ${esc(r['חדר'] || '')}` : ''}`).join(' | ')}

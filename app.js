@@ -46,7 +46,19 @@ const settings = () => Store.get('meta', 'settings') || { totalCredits: DEGREE_T
 const courses = () => Store.list('course').sort((a, b) => (a.sem - b.sem) || a.code.localeCompare(b.code));
 const courseByCode = code => Store.get('course', code);
 const courseLabel = code => { const c = courseByCode(code); return c ? c.name : code || ''; };
-const semName = n => n === 0 ? 'בחירה / לא משובץ' : `${SEMESTER_NAMES[n - 1] || `סמסטר ${n}`} · ${semesterYearLabel(n)}`;
+const semName = n => n === 0 ? 'בחירה / לא משובץ'
+  : n > 100 ? `☀️ סמסטר ${semesterYearLabel(n)}`
+  : `${SEMESTER_NAMES[n - 1] || `סמסטר ${n}`} · ${semesterYearLabel(n)}`;
+
+// Semester ids in plan order. Summer semesters are 100 + the regular semester they follow (102 = summer after semester 2).
+function semIds() {
+  const st = settings(), all = Store.list('course');
+  const n = Math.max(st.semesters || 8, ...all.map(c => (c.sem > 100 ? 0 : c.sem) || 0));
+  const summers = new Set([...(st.summers || []), ...all.filter(c => c.sem > 100).map(c => c.sem - 100)]);
+  const ids = [];
+  for (let s = 1; s <= n; s++) { ids.push(s); if (summers.has(s)) ids.push(100 + s); }
+  return ids;
+}
 
 // Binary pass (reserve duty): credits count toward the degree, the grade stays out of the average.
 function isComplete(c) { return c && (c.status === 'done' || c.status === 'exempt' || c.status === 'binary'); }
@@ -226,13 +238,10 @@ $('#modal').addEventListener('click', e => { if (e.target.id === 'modal') e.targ
 // ---------- view: curriculum map ----------
 function renderMap(root) {
   const list = courses();
-  const nSem = Math.max(settings().semesters || 8, ...list.map(c => c.sem));
-  const bySem = Array.from({ length: nSem + 1 }, () => []);
-  list.forEach(c => bySem[Math.max(0, Math.min(nSem, c.sem || 0))].push(c));
-
-  const rows = [];
-  for (let s = 1; s <= nSem; s++) rows.push(semesterRow(s, bySem[s]));
-  if (bySem[0].length) rows.push(semesterRow(0, bySem[0]));
+  const ids = semIds();
+  const rows = ids.map(s => semesterRow(s, list.filter(c => c.sem === s)));
+  const loose = list.filter(c => !c.sem || !ids.includes(c.sem));
+  if (loose.length) rows.push(semesterRow(0, loose));
 
   root.innerHTML = `
     ${connectCard()}
@@ -347,7 +356,6 @@ function highlightChain(code, on) {
 
 function editCourse(code) {
   const c = code ? courseByCode(code) : { code: '', name: '', credits: 3, sem: 0, prereqs: [], status: 'none', grade: null, notes: '' };
-  const nSem = settings().semesters || 8;
   const others = courses().filter(x => x.code !== code);
   const dependents = code ? others.filter(x => (x.prereqs || []).includes(code)) : [];
   let prereqs = [...(c.prereqs || [])];
@@ -362,7 +370,7 @@ function editCourse(code) {
       <label>מספר קורס<input name="code" required inputmode="numeric" value="${esc(c.code)}" ${code ? 'readonly' : ''}></label>
       <label>נק״ז<input name="credits" type="number" step="0.5" min="0" value="${esc(c.credits)}"></label>
       <label>סמסטר<select name="sem">
-        ${Array.from({ length: nSem }, (_, i) => `<option value="${i + 1}" ${c.sem === i + 1 ? 'selected' : ''}>${esc(semName(i + 1))}</option>`).join('')}
+        ${semIds().map(i => `<option value="${i}" ${c.sem === i ? 'selected' : ''}>${esc(semName(i))}</option>`).join('')}
         <option value="0" ${!c.sem ? 'selected' : ''}>${semName(0)}</option>
       </select></label>
       <label>ציון<input name="grade" type="number" min="0" max="100" inputmode="numeric" value="${c.grade ?? ''}" placeholder="—"></label>

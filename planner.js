@@ -90,15 +90,14 @@ function requirementsHtml() {
 // ---------- semester columns ----------
 function semesterColumns() {
   const list = courses();
-  const nSem = Math.max(settings().semesters || 8, ...list.map(c => c.sem || 0));
   const now = currentSemesterNumber();
   const cols = [];
-  for (let s = 1; s <= nSem; s++) {
+  for (const s of semIds()) {
     const sl = list.filter(c => c.sem === s);
     const credits = sl.reduce((a, c) => a + (+c.credits || 0), 0);
     const load = credits >= 24 ? 'heavy' : credits >= 20 ? 'mid' : 'light';
     cols.push(`<div class="pcol ${s === now ? 'now' : ''} ${s < now ? 'past' : ''}">
-      <div class="pcol-head"><b>סמסטר ${s}</b><small>${semesterYearLabel(s)}${s === now ? ' · עכשיו' : ''}</small>
+      <div class="pcol-head"><b>${s > 100 ? 'קיץ' : `סמסטר ${s}`}</b><small>${semesterYearLabel(s)}${s === now ? ' · עכשיו' : ''}</small>
         <span class="load ${load}">${fmt(credits)} נק״ז</span></div>
       <div class="pcol-list">${sl.map(planChip).join('') || '<p class="muted">ריק</p>'}</div>
       <button class="btn small" data-addsem="${s}">＋ קורס</button>
@@ -169,8 +168,8 @@ function addToPlan(code, sem) {
   const pick = sem ? Promise.resolve(sem) : new Promise(resolve => openModal(`
     <h2>＋ ${esc(e.name)}</h2>
     <p class="muted">${esc(code)} · ${fmt(e.credits)} נק״ז · רשימה ${LISTS[e.list].short}</p>
-    <label>באיזה סמסטר?<select name="sem">${Array.from({ length: nSem }, (_, i) => i + 1).filter(s => s >= now)
-      .map(s => `<option value="${s}">סמסטר ${s} · ${semesterYearLabel(s)}</option>`).join('')}</select></label>
+    <label>באיזה סמסטר?<select name="sem">${semIds().filter(s => (s > 100 ? s - 100 : s) >= now)
+      .map(s => `<option value="${s}">${s > 100 ? 'קיץ' : `סמסטר ${s}`} · ${semesterYearLabel(s)}</option>`).join('')}</select></label>
     <div class="actions"><span class="spacer"></span><button class="btn" value="cancel" formnovalidate>ביטול</button><button class="btn primary" value="save">הוסף</button></div>`,
     (a, fd) => resolve(+fd.get('sem'))));
   pick.then(s => {
@@ -213,7 +212,7 @@ function binaryQuota() {
   for (let y = 1; y <= Math.ceil(nSem / 2); y++) {
     const g = Math.max(+groups[2 * y - 1] || 0, +groups[2 * y] || 0);
     const allowed = RESERVE.binaryPerYear[g] || 0;
-    const used = courses().filter(c => c.status === 'binary' && Math.ceil((c.sem || 0) / 2) === y);
+    const used = courses().filter(c => c.status === 'binary' && Math.ceil(((c.sem > 100 ? c.sem - 100 : c.sem) || 0) / 2) === y);
     if (allowed || used.length) years.push({ y, group: g, allowed, used });
   }
   const usedAll = courses().filter(c => c.status === 'binary');
@@ -234,7 +233,7 @@ function gpaWithout(codes) {
 function binarySuggestions(year) {
   const base = computeStats().gpa;
   return courses()
-    .filter(c => c.status === 'done' && c.grade != null && c.grade >= RESERVE.binaryMinGrade && Math.ceil(c.sem / 2) === year)
+    .filter(c => c.status === 'done' && c.grade != null && c.grade >= RESERVE.binaryMinGrade && Math.ceil((c.sem > 100 ? c.sem - 100 : c.sem) / 2) === year)
     .map(c => ({ c, gpa: gpaWithout([c.code]), gain: gpaWithout([c.code]) - base }))
     .sort((a, b) => b.gain - a.gain);
 }

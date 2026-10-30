@@ -14,10 +14,11 @@ const wavg = list => {
 // cumulative average up to and including it.
 function semesterStats() {
   const list = courses();
-  const maxSem = Math.max(0, ...list.filter(c => isComplete(c) || c.status === 'active').map(c => c.sem || 0));
+  const order = s => s > 100 ? s - 99.5 : s;
+  const maxOrder = Math.max(0, ...list.filter(c => isComplete(c) || c.status === 'active').map(c => order(c.sem || 0)));
   const out = [];
   let running = [];
-  for (let s = 1; s <= maxSem; s++) {
+  for (const s of semIds().filter(id => order(id) <= maxOrder)) {
     const inSem = list.filter(c => c.sem === s);
     const graded = inSem.filter(isGraded);
     running = running.concat(graded);
@@ -82,7 +83,7 @@ function semesterChart(stats) {
       <rect x="${x(i) - band / 2}" y="${T}" width="${band}" height="${H - T - B}" fill="transparent"></rect>
       <path d="M${x(i) - bw / 2},${y(lo)} V${top + 4} Q${x(i) - bw / 2},${top} ${x(i) - bw / 2 + 4},${top} H${x(i) + bw / 2 - 4} Q${x(i) + bw / 2},${top} ${x(i) + bw / 2},${top + 4} V${y(lo)} Z" class="bar-fill"></path>
       <text x="${x(i)}" y="${top - 6}" text-anchor="middle" class="bar-val">${fmt(s.avg, 1)}</text>
-      <text x="${x(i)}" y="${H - 8}" text-anchor="middle" class="tick">סמ׳ ${s.sem}</text></g>`;
+      <text x="${x(i)}" y="${H - 8}" text-anchor="middle" class="tick">${s.sem > 100 ? 'קיץ' : `סמ׳ ${s.sem}`}</text></g>`;
   }).join('');
   const line = rows.map((s, i) => `${i ? 'L' : 'M'}${x(i)},${y(s.cumulative)}`).join(' ');
   const dots = rows.map((s, i) => `<circle cx="${x(i)}" cy="${y(s.cumulative)}" r="5" class="cum-dot" data-tip="ממוצע מצטבר אחרי סמסטר ${s.sem}: ${fmt(s.cumulative, 2)}"></circle>`).join('');
