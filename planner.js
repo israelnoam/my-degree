@@ -320,9 +320,16 @@ function renderPlanner(root) {
   });
   $$('[data-unbinary]', root).forEach(b => b.onclick = () => Store.put('course', b.dataset.unbinary, { status: 'done' }));
 
-  if ((plannerTab === 'catalog' || plannerTab === 'plan') && !Object.keys(CF.data).length && !renderPlanner.loading) {
+  // Load CheeseFork once; if it fails (offline, site down) wait 5 minutes before
+  // trying again, otherwise every re-render would retry and freeze the page.
+  const cfRetryOk = Date.now() - (renderPlanner.cfTriedAt || 0) > 5 * 60_000;
+  if ((plannerTab === 'catalog' || plannerTab === 'plan') && !Object.keys(CF.data).length && !renderPlanner.loading && cfRetryOk) {
     renderPlanner.loading = true;
-    CF.loadRecent().finally(() => { renderPlanner.loading = false; if (currentView === 'planner') render(); });
+    renderPlanner.cfTriedAt = Date.now();
+    CF.loadRecent().finally(() => {
+      renderPlanner.loading = false;
+      if (currentView === 'planner' && Object.keys(CF.data).length) render();
+    });
   }
 }
 

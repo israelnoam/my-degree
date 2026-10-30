@@ -360,17 +360,10 @@ const Sync = {
   async createFile(name, body) {
     const boundary = 'pp' + uid();
     const meta = JSON.stringify({ name, parents: ['appDataFolder'], mimeType: 'application/json' });
+    // multipart/related needs CRLF line breaks, so they're spelled out.
     const multipart =
-      `--${boundary}
-Content-Type: application/json; charset=UTF-8
-
-${meta}
-` +
-      `--${boundary}
-Content-Type: application/json
-
-${body}
---${boundary}--`;
+      `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${meta}\r\n` +
+      `--${boundary}\r\nContent-Type: application/json\r\n\r\n${body}\r\n--${boundary}--`;
     const res = await this.api('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
       method: 'POST', headers: { 'Content-Type': `multipart/related; boundary=${boundary}` }, body: multipart,
     });
