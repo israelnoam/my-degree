@@ -320,9 +320,9 @@ function renderPlanner(root) {
   });
   $$('[data-unbinary]', root).forEach(b => b.onclick = () => Store.put('course', b.dataset.unbinary, { status: 'done' }));
 
-  // Load CheeseFork once; if it fails (offline, site down) wait 5 minutes before
-  // trying again, otherwise every re-render would retry and freeze the page.
-  const cfRetryOk = Date.now() - (renderPlanner.cfTriedAt || 0) > 5 * 60_000;
+  // Load CheeseFork once per launch (it refreshes itself once a day, see CF.fetchDaily).
+  // Never retry from a re-render: that loop used to freeze the page.
+  const cfRetryOk = !renderPlanner.cfTriedAt;
   if ((plannerTab === 'catalog' || plannerTab === 'plan') && !Object.keys(CF.data).length && !renderPlanner.loading && cfRetryOk) {
     renderPlanner.loading = true;
     renderPlanner.cfTriedAt = Date.now();

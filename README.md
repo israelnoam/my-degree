@@ -25,7 +25,15 @@ No server or database is needed.
 
 The app's Settings page shows the exact origin and redirect URI to paste, so you can copy them from there.
 
-## 3. Install it
+## 3. Open it on your phone, iPad and PC
+
+In the app, go to **הגדרות (Settings) → 📲 פתיחה בטלפון**. It shows a QR code to scan with your phone's camera, the link with a copy button, and a button to WhatsApp the link to yourself.
+
+- **iPhone / iPad:** open the link in **Safari**, tap Share ⬆️ → **Add to Home Screen** → Add. Always open the app from the home-screen icon, then tap **התחבר עם Google** once.
+- **Android:** open it in **Chrome**, menu ⋮ → **Install app**, then tap **התחבר עם Google** once.
+- **PC:** in Chrome/Edge, click the install icon in the address bar.
+
+## Install details
 
 - **PC (Chrome/Edge):** click the install icon in the address bar.
 - **iPhone/iPad (Safari):** tap Share, then **Add to Home Screen**.

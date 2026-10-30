@@ -34,16 +34,40 @@ const CF = {
     if (this.loading[key]) return this.loading[key];
     // The file is `var courses_from_rishum = [...]`. Read it as plain text and parse
     // the JSON, so nothing from that site ever runs as code inside the app.
-    this.loading[key] = fetch(`${CF_BASE}/courses_${key}.min.js`)
-      .then(res => { if (!res.ok) throw new Error(); return res.text(); })
-      .then(text => {
-        const list = JSON.parse(text.slice(text.indexOf('=') + 1).trim().replace(/;$/, ''));
-        const map = new Map(list.map(c => [c.general['מספר מקצוע'], c]));
-        this.data[key] = map;
-        return map;
-      })
+    const parse = text => {
+      const list = JSON.parse(text.slice(text.indexOf('=') + 1).trim().replace(/;$/, ''));
+      const map = new Map(list.map(c => [c.general['מספר מקצוע'], c]));
+      this.data[key] = map;
+      return map;
+    };
+    this.loading[key] = this.fetchDaily(key).then(parse)
       .catch(() => { delete this.loading[key]; throw new Error('אין נתוני CheeseFork לסמסטר הזה'); });
     return this.loading[key];
+  },
+
+  // CheeseFork is fetched at most once a day per semester. The copy is kept on the
+  // device (Cache Storage), so other launches that day, and days when the site is
+  // down, use it. A semester that isn't published yet is tried again tomorrow.
+  async fetchDaily(key) {
+    const url = `${CF_BASE}/courses_${key}.min.js`;
+    const today = ymd(new Date());
+    const missKey = `pp_cf_missing_${key}`;
+    const cache = window.caches ? await caches.open('cheesefork-v1').catch(() => null) : null;
+    const saved = cache ? await cache.match(url).catch(() => null) : null;
+    if (saved && saved.headers.get('x-day') === today) return saved.text();
+    if (!saved && lsGet(missKey) === today) throw new Error('missing today');
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(String(res.status));
+      const text = await res.text();
+      if (cache) await cache.put(url, new Response(text, { headers: { 'x-day': today, 'Content-Type': 'text/plain' } })).catch(() => {});
+      lsSet(missKey, null);
+      return text;
+    } catch (e) {
+      if (saved) return saved.text(); // yesterday's copy beats nothing
+      lsSet(missKey, today);
+      throw e;
+    }
   },
 
   // The current semester, plus the same season last year (shows what usually opens when).

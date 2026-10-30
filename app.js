@@ -871,6 +871,77 @@ function editSlot(id, defaults = {}) {
   });
 }
 
+// ---------- install on your phone / iPad / PC ----------
+const APP_URL = location.origin + location.pathname;
+const QR_LIB = 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js';
+
+function installGuide() {
+  const ua = navigator.userAgent;
+  const device = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) ? 'ios' : /Android/.test(ua) ? 'android' : 'desktop';
+  const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  const open = k => device === k ? 'open' : '';
+  return `
+    <section class="panel narrow" id="install">
+      <h2>📲 פתיחה בטלפון, באייפד ובמחשב</h2>
+      ${standalone ? '<p class="good">✓ האפליקציה מותקנת במכשיר הזה.</p>' : ''}
+      <div class="install-top">
+        <div class="qr-box"><div id="appQr" class="qr" aria-label="קוד QR לכתובת האפליקציה"></div><small class="muted">סרוק עם המצלמה של הטלפון</small></div>
+        <div class="install-link">
+          <p>הכתובת של האפליקציה:</p>
+          <code dir="ltr" class="app-url">${esc(APP_URL)}</code>
+          <div class="row wrap">
+            <button class="btn" id="copyUrl">📋 העתק קישור</button>
+            <a class="btn" id="waUrl" href="https://wa.me/?text=${encodeURIComponent(APP_URL)}" target="_blank" rel="noopener">💬 שלח לעצמי בוואטסאפ</a>
+            ${navigator.share ? '<button class="btn" id="shareUrl">↗️ שתף</button>' : ''}
+          </div>
+        </div>
+      </div>
+
+      <details class="install-step" ${open('ios')}><summary>🍎 אייפון / אייפד</summary>
+        <ol class="howto">
+          <li>פתח את הקישור ב-<b>Safari</b> (לא בכרום ולא מתוך וואטסאפ: אם הוא נפתח בתוך וואטסאפ, לחץ על ⋯ ← "פתח ב-Safari").</li>
+          <li>לחץ על כפתור השיתוף <b>⬆️</b> בתחתית המסך.</li>
+          <li>גלול ובחר <b>"הוסף למסך הבית"</b> ← <b>"הוסף"</b>.</li>
+          <li>פתח את האפליקציה <b>מהאייקון במסך הבית</b> (לא מ-Safari): כך היא נפתחת במסך מלא ושומרת את החיבור.</li>
+          <li>במפת הקורסים לחץ <b>"התחבר עם Google"</b>, בחר את החשבון שלך ואשר. אם מופיע "Google hasn't verified this app": Advanced ← Go to israelnoam.github.io.</li>
+        </ol>
+      </details>
+      <details class="install-step" ${open('android')}><summary>🤖 אנדרואיד</summary>
+        <ol class="howto">
+          <li>פתח את הקישור ב-<b>Chrome</b>.</li>
+          <li>תפריט <b>⋮</b> ← <b>"התקן אפליקציה"</b> (או "הוסף למסך הבית") ← <b>"התקן"</b>.</li>
+          <li>פתח מהאייקון, ולחץ <b>"התחבר עם Google"</b> במפת הקורסים.</li>
+        </ol>
+      </details>
+      <details class="install-step" ${open('desktop')}><summary>💻 מחשב</summary>
+        <ol class="howto">
+          <li>ב-Chrome או Edge: אייקון ההתקנה <b>⊕</b> בצד ימין של שורת הכתובת, או תפריט ← "התקן אפליקציה".</li>
+          <li>האפליקציה תיפתח בחלון משלה, ותופיע בתפריט התחל.</li>
+        </ol>
+      </details>
+      <p class="muted">חיבור ל-Google עושים פעם אחת בכל מכשיר. אחרי זה הנתונים מסתנכרנים לבד פעם ביום, או מיד בלחיצה על כפתור הסנכרון למעלה.</p>
+    </section>`;
+}
+
+function bindInstallGuide(root) {
+  $('#copyUrl', root)?.addEventListener('click', () => navigator.clipboard.writeText(APP_URL).then(() => toast('הקישור הועתק')).catch(() => prompt('העתק את הקישור:', APP_URL)));
+  $('#shareUrl', root)?.addEventListener('click', () => navigator.share({ title: 'התואר שלי', url: APP_URL }).catch(() => {}));
+  const box = $('#appQr', root);
+  if (!box) return;
+  const draw = () => {
+    const qr = window.qrcode(0, 'M');
+    qr.addData(APP_URL);
+    qr.make();
+    box.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
+  };
+  if (window.qrcode) return draw();
+  const s = document.createElement('script');
+  s.src = QR_LIB;
+  s.onload = draw;
+  s.onerror = () => { box.innerHTML = '<small class="muted">אין אינטרנט להצגת הקוד. השתמש בקישור.</small>'; };
+  document.head.appendChild(s);
+}
+
 // ---------- settings ----------
 // A Google error, with a one-click fix when it's an API that is switched off.
 function errorNote(what, e) {
@@ -981,7 +1052,7 @@ function renderSettings(root) {
   const isHttps = location.protocol === 'https:' || location.hostname === 'localhost';
   root.innerHTML = `
     <section class="panel narrow">
-      <h2>☁️ סנכרון עם Google</h2>
+      <div class="perf-head"><h2>☁️ סנכרון עם Google</h2><a class="btn small" href="#install" id="toInstall">📲 איך פותחים בטלפון</a></div>
       <p class="muted">הנתונים נשמרים בתיקייה מוסתרת בגוגל דרייב שלך (רק האפליקציה הזו רואה אותה), ומסתנכרנים בין המחשב, האייפד והטלפון.</p>
       <div class="sync-status" data-state="${Sync.state}">
         <span class="dot"></span><b>${SYNC_LABELS[Sync.state]}</b>
@@ -1033,14 +1104,9 @@ function renderSettings(root) {
       ${Sync.connected ? `<div class="row wrap"><button class="btn" id="listBackups">☁️ גיבויים אוטומטיים מ-Drive (7 ימים)</button></div><div id="backupList"></div>` : ''}
     </section>
 
-    <section class="panel narrow">
-      <h2>📲 התקנה כאפליקציה</h2>
-      <ul class="howto">
-        <li><b>מחשב (Chrome / Edge):</b> אייקון ההתקנה בשורת הכתובת, או תפריט ← "התקן אפליקציה".</li>
-        <li><b>אייפון / אייפד (Safari):</b> כפתור השיתוף ← "הוסף למסך הבית".</li>
-        <li><b>אנדרואיד (Chrome):</b> תפריט ⋮ ← "התקן אפליקציה".</li>
-      </ul>
-    </section>`;
+    ${installGuide()}`;
+  bindInstallGuide(root);
+  $('#toInstall', root)?.addEventListener('click', e => { e.preventDefault(); $('#install', root)?.scrollIntoView({ behavior: 'smooth' }); });
 
   const saveClientId = () => { Sync.clientId = $('#clientId').value; };
   $('#clientId').onchange = saveClientId;
