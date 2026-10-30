@@ -32,22 +32,17 @@ const CF = {
   load(key) {
     if (this.data[key]) return Promise.resolve(this.data[key]);
     if (this.loading[key]) return this.loading[key];
-    // Each file assigns a global; load one at a time so they don't overwrite each other.
-    const prev = CF._chain || Promise.resolve();
-    this.loading[key] = CF._chain = prev.catch(() => {}).then(() => new Promise((resolve, reject) => {
-      delete window.courses_from_rishum;
-      const s = document.createElement('script');
-      s.src = `${CF_BASE}/courses_${key}.min.js`;
-      s.onload = () => {
-        const list = window.courses_from_rishum || [];
+    // The file is `var courses_from_rishum = [...]`. Read it as plain text and parse
+    // the JSON, so nothing from that site ever runs as code inside the app.
+    this.loading[key] = fetch(`${CF_BASE}/courses_${key}.min.js`)
+      .then(res => { if (!res.ok) throw new Error(); return res.text(); })
+      .then(text => {
+        const list = JSON.parse(text.slice(text.indexOf('=') + 1).trim().replace(/;$/, ''));
         const map = new Map(list.map(c => [c.general['מספר מקצוע'], c]));
         this.data[key] = map;
-        s.remove();
-        resolve(map);
-      };
-      s.onerror = () => { s.remove(); delete this.loading[key]; reject(new Error('אין נתוני CheeseFork לסמסטר הזה')); };
-      document.head.appendChild(s);
-    }));
+        return map;
+      })
+      .catch(() => { delete this.loading[key]; throw new Error('אין נתוני CheeseFork לסמסטר הזה'); });
     return this.loading[key];
   },
 

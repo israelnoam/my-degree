@@ -22,12 +22,45 @@ const STATUS = {
   binary: { label: 'עובר בינארי', icon: '🎖️' },
 };
 
-function toast(msg) {
+// With `undo`, the message gets a button that stays for a few seconds.
+function toast(msg, undo) {
   const t = $('#toast');
   t.textContent = msg;
+  t.classList.toggle('has-undo', !!undo);
+  if (undo) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'toast-undo'; b.textContent = '↩ בטל';
+    b.onclick = () => { undo(); t.classList.remove('show'); };
+    t.append(' ', b);
+  }
   t.classList.add('show');
   clearTimeout(toast.timer);
-  toast.timer = setTimeout(() => t.classList.remove('show'), 2200);
+  toast.timer = setTimeout(() => t.classList.remove('show'), undo ? 8000 : 2200);
+}
+
+// Copies of records as they are now, to put back if a delete is undone.
+const snapshot = keys => keys.map(k => Store.recs[k]).filter(r => r && !r.del).map(r => ({ ...r }));
+
+// Deletes records and offers "undo" for a few seconds.
+function removeWithUndo(items, message, alsoSnapshot = []) {
+  const snaps = snapshot([...items.map(([kind, id]) => `${kind}:${id}`), ...alsoSnapshot]);
+  items.forEach(([kind, id]) => Store.remove(kind, id));
+  toast(message, () => Store.restore(snaps));
+}
+
+// Brings back a Drive backup: records in it are restored, and records of the same
+// kinds that aren't in it are deleted (other kinds are left alone).
+function restoreBackup(recs) {
+  const keep = Object.values(recs).filter(r => !r.del);
+  const keepKeys = new Set(keep.map(r => `${r.kind}:${r.id}`));
+  const kinds = new Set(keep.map(r => r.kind));
+  const before = snapshot(Object.keys(Store.recs));
+  for (const r of Object.values(Store.recs)) {
+    if (!r.del && kinds.has(r.kind) && !keepKeys.has(`${r.kind}:${r.id}`)) Store.remove(r.kind, r.id);
+  }
+  Store.restore(keep);
+  Sync.schedule(100);
+  toast('הגיבוי שוחזר', () => { Store.restore(before); Sync.schedule(100); });
 }
 
 function ymd(d) {
@@ -216,9 +249,25 @@ document.addEventListener('click', e => {
 });
 
 function render() {
-  renderStats();
   const views = { map: renderMap, planner: renderPlanner, performance: renderPerformance, tasks: renderTasks, timetable: renderTimetable, cv: renderCv, settings: renderSettings };
-  (views[currentView] || renderMap)($('#view'));
+  try {
+    renderStats();
+    (views[currentView] || renderMap)($('#view'));
+  } catch (err) {
+    // A bad record or a bug in one screen must not leave a blank app: show where
+    // to go next, and keep the other tabs usable.
+    console.error(err);
+    $('#view').innerHTML = `<div class="card"><h2>⚠️ משהו השתבש במסך הזה</h2>
+      <p class="muted">${esc(err.message || err)}</p>
+      <p>נסה מסך אחר, או ייצא גיבוי מההגדרות. אם זה חוזר, אפשר לנקות את הנתונים במכשיר הזה ולסנכרן מחדש.</p>
+      <div class="actions"><button class="btn" id="errSettings" type="button">⚙️ להגדרות</button>
+      <button class="btn danger" id="errWipe" type="button">נקה נתונים מקומיים</button></div></div>`;
+    $('#errSettings').onclick = () => go('settings');
+    $('#errWipe').onclick = () => {
+      if (!confirm('למחוק את הנתונים המקומיים במכשיר הזה? מה שמסונכרן ב-Google יחזור בסנכרון הבא.')) return;
+      lsSet('pp_records_v1', null); location.reload();
+    };
+  }
 }
 
 // ---------- modal ----------
@@ -407,10 +456,11 @@ function editCourse(code) {
   (action, fd) => {
     if (action === 'delete') {
       if (!confirm(`למחוק את "${c.name}"?`)) return false;
+      const dependents = courses().filter(x => (x.prereqs || []).includes(code));
+      const snaps = snapshot([`course:${code}`, ...dependents.map(x => `course:${x.code}`)]);
       Store.remove('course', code);
-      courses().filter(x => (x.prereqs || []).includes(code))
-        .forEach(x => Store.put('course', x.code, { prereqs: x.prereqs.filter(p => p !== code) }));
-      toast('הקורס נמחק');
+      dependents.forEach(x => Store.put('course', x.code, { prereqs: x.prereqs.filter(p => p !== code) }));
+      toast('הקורס נמחק', () => Store.restore(snaps));
       return;
     }
     const newCode = (fd.get('code') || '').trim();
@@ -623,7 +673,7 @@ function editTask(id, defaults = {}) {
       <button class="btn primary" value="save">שמור</button>
     </div>`,
   (action, fd) => {
-    if (action === 'delete') { Store.remove('task', id); toast('המשימה נמחקה'); return; }
+    if (action === 'delete') { removeWithUndo([['task', id]], 'המשימה נמחקה'); return; }
     const date = fd.get('date'), time = fd.get('time');
     Store.put('task', id || uid(), {
       title: fd.get('title').trim(), type: fd.get('type'), course: fd.get('course'),
@@ -785,7 +835,7 @@ function showEvent(ev) {
     ${ev.location ? `<p>📍 ${esc(ev.location)}</p>` : ''}
     ${ev.description ? `<p class="ev-desc">${esc(ev.description.replace(/<[^>]+>/g, ' '))}</p>` : ''}
     <div class="actions">
-      <a class="btn" href="${esc(ev.link)}" target="_blank" rel="noopener">פתח ב-Google Calendar</a>
+      <a class="btn" href="${esc(/^https:\/\//.test(ev.link) ? ev.link : '#')}" target="_blank" rel="noopener">פתח ב-Google Calendar</a>
       <span class="spacer"></span>
       <button class="btn primary" value="cancel">סגור</button>
     </div>`, () => {});
@@ -811,7 +861,7 @@ function editSlot(id, defaults = {}) {
       <button class="btn primary" value="save">שמור</button>
     </div>`,
   (action, fd) => {
-    if (action === 'delete') { Store.remove('slot', id); return; }
+    if (action === 'delete') { removeWithUndo([['slot', id]], 'השיעור נמחק'); return; }
     if (!fd.get('course') && !fd.get('title').trim()) { alert('בחר קורס או כתוב כותרת'); return false; }
     if (toMin(fd.get('end')) <= toMin(fd.get('start'))) { alert('שעת הסיום חייבת להיות אחרי ההתחלה'); return false; }
     Store.put('slot', id || uid(), {
@@ -979,7 +1029,8 @@ function renderSettings(root) {
         <button class="btn" id="importBtn">⬆️ ייבוא מקובץ</button>
         <button class="btn danger" id="resetCurriculum">אפס תוכנית לימודים</button>
       </div>
-      <p class="muted">איפוס מחזיר את רשימת הקורסים לתוכנית ברירת המחדל (הציונים והסטטוסים יימחקו). משימות ומערכת שעות לא נפגעות.</p>
+      <p class="muted">איפוס מחזיר את רשימת הקורסים לתוכנית ברירת המחדל (הציונים והסטטוסים יימחקו; אפשר לבטל מיד אחרי). משימות ומערכת שעות לא נפגעות.</p>
+      ${Sync.connected ? `<div class="row wrap"><button class="btn" id="listBackups">☁️ גיבויים אוטומטיים מ-Drive (7 ימים)</button></div><div id="backupList"></div>` : ''}
     </section>
 
     <section class="panel narrow">
@@ -1017,14 +1068,31 @@ function renderSettings(root) {
   $('#importBtn').onclick = () => $('#importFile').click();
   $('#resetCurriculum').onclick = () => {
     if (!confirm('לאפס את כל הקורסים לתוכנית ברירת המחדל?')) return;
+    const snaps = snapshot(courses().map(c => `course:${c.code}`));
     courses().forEach(c => Store.remove('course', c.code));
-    const now = Date.now();
+    const now = Store.now();
     SEED_COURSES.forEach(([sem, code, name, credits, prereqs, type]) => {
       Store.recs[`course:${code}`] = { kind: 'course', id: code, code, name, credits, sem, prereqs, type, status: 'none', grade: null, notes: '', u: now + 1 };
     });
     Store.persist(); Store.emit();
-    toast('התוכנית אופסה');
+    toast('התוכנית אופסה', () => Store.restore(snaps));
   };
+  $('#listBackups')?.addEventListener('click', async e => {
+    const box = $('#backupList'), btn = e.currentTarget;
+    btn.disabled = true;
+    try {
+      if (!Sync.token()) throw new Error('צריך חיבור פעיל: לחץ על כפתור הסנכרון');
+      const files = await Sync.listBackups();
+      box.innerHTML = files.length
+        ? files.map(f => `<div class="list-row"><span>☁️ ${esc(f.name.replace(/^.*backup-|.json$/g, ''))}</span><button class="btn small" data-bk="${esc(f.id)}">שחזר</button></div>`).join('')
+        : '<p class="muted">עוד אין גיבויים. הראשון נוצר בסנכרון הבא.</p>';
+      $$('[data-bk]', box).forEach(b => b.onclick = async () => {
+        if (!confirm('לשחזר את הגיבוי הזה? השינויים שאחריו יוחלפו (אפשר לבטל מיד אחרי).')) return;
+        try { restoreBackup(await Sync.fetchBackup(b.dataset.bk)); } catch (err) { alert(err.message || 'השחזור נכשל'); }
+      });
+    } catch (err) { box.innerHTML = `<p class="warn">${esc(err.message || err)}</p>`; }
+    btn.disabled = false;
+  });
 }
 
 // The file input lives outside #view so a re-render while the picker is open
@@ -1038,7 +1106,9 @@ async function importBackup(e) {
     data = JSON.parse(await file.text());
     if (!data || typeof data.recs !== 'object') throw new Error();
   } catch { alert('הקובץ הזה לא גיבוי של האפליקציה'); return; }
+  data.recs = cleanRecords(data.recs);
   const n = Object.keys(data.recs).length;
+  if (!n) { alert('לא נמצאו רשומות תקינות בקובץ'); return; }
   if (!confirm(`לייבא ${n} רשומות מהקובץ? הן יחליפו את הקיימות.`)) return;
   // Bump timestamps so the imported state wins everywhere after the next sync.
   const now = Date.now();

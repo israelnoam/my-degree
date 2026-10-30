@@ -568,3 +568,6 @@ h4.bucket-title { margin: 10px 0 6px; font-size: .85rem; }
   .cv-page { padding: 20px 18px; font-size: 12.5px; }
   .cv-page .cv-row { flex-direction: column; gap: 0; }
 }
+/* toast with an "undo" button */
+.toast.has-undo { pointer-events: auto; }
+.toast-undo { margin-inline-start: 8px; border: 0; background: transparent; color: var(--accent, #4ea1ff); font: inherit; font-weight: 700; cursor: pointer; padding: 0 4px; }

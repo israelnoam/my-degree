@@ -75,7 +75,7 @@ const GCal = {
     const cals = await this.listCalendars();
     const wanted = DEFAULT_CALENDARS.map(norm);
     const ids = cals.filter(c => c.primary || wanted.includes(norm(c.summary))).map(c => c.id);
-    if (ids.length) Store.put('meta', 'settings', { calendarIds: ids });
+    if (ids.length) saveGuess({ calendarIds: ids });
     return ids;
   },
 
@@ -140,7 +140,7 @@ const GCal = {
     const cats = this.categories || await this.scanCategories();
     const keys = cats.filter(c => c.study).map(c => c.key);
     if (!keys.length) return null; // nothing looks like study yet: show everything rather than nothing
-    Store.put('meta', 'settings', { calCategories: keys });
+    saveGuess({ calCategories: keys });
     return keys;
   },
 
@@ -184,6 +184,14 @@ const GCal = {
 // ---------- Tasks ----------
 const TASKS_API = 'https://tasks.googleapis.com/tasks/v1';
 const COURSE_PREFIX = '📚 ';
+
+// Guessed defaults (calendars, categories, active courses) are saved only once this
+// device has synced, so a device that hasn't heard from the others yet can't
+// overwrite the choices you made on them.
+function saveGuess(patch) {
+  if (Sync.connected && !Sync.lastSync) return;
+  Store.put('meta', 'settings', patch);
+}
 
 function toGoogleTask(t, inCourseList) {
   const icon = (TASK_TYPES[t.type] || TASK_TYPES.other).icon;
@@ -254,7 +262,7 @@ const GTasks = {
       list = await created.json();
       lists.push({ id: list.id, title: list.title });
     }
-    if (list.id !== st.tasksListId) Store.putRaw('meta', 'settings', { ...st, tasksListId: list.id, u: Date.now() });
+    if (list.id !== st.tasksListId) Store.putRaw('meta', 'settings', { tasksListId: list.id, u: Store.now() });
     return list.id;
   },
 
@@ -282,7 +290,7 @@ const GTasks = {
       const c = courseByCode(code);
       if (c && c.status === 'none') Store.put('course', code, { status: 'active' });
     }
-    Store.put('meta', 'settings', { autoActive: [...done, ...fresh] });
+    saveGuess({ autoActive: [...done, ...fresh] });
   },
 
   async listAll(listId) {
@@ -325,13 +333,26 @@ const GTasks = {
     const synced = [...new Set([defaultList, ...Object.keys(map)])];
     const targetFor = r => listForCourse[r.course] || defaultList;
 
+    // Two devices that both imported the same Google task end up with two copies.
+    // Keep one (the one named after the Google id, else the lowest id) and delete the
+    // rest here only: they must not carry the Google id, or the delete would reach Google.
+    let changed = false;
+    const copies = {};
+    for (const r of Object.values(Store.recs)) if (r.kind === 'task' && !r.del && r.gid) (copies[r.gid] ||= []).push(r);
+    for (const [gid, group] of Object.entries(copies)) {
+      if (group.length < 2) continue;
+      group.sort((a, b) => (b.id === 'g' + gid) - (a.id === 'g' + gid) || String(a.id).localeCompare(String(b.id)));
+      for (const dup of group.slice(1)) Store.recs[`task:${dup.id}`] = { kind: 'task', id: dup.id, u: Store.now(), del: true };
+      changed = true;
+    }
+    if (changed) Store.persist();
+
     const byId = {};
     for (const listId of synced) {
       for (const g of await this.listAll(listId)) byId[g.id] = { g, listId };
     }
     const known = new Set();
-    let changed = false;
-    const stamp = (id, data) => { const now = Date.now(); Store.putRaw('task', id, { ...data, u: now, gU: now }); changed = true; };
+    const stamp = (id, data) => { const now = Store.now(); Store.putRaw('task', id, { ...data, u: now, gU: now }); changed = true; };
     const create = async r => {
       const listId = targetFor(r);
       const created = await this.send(listId, 'POST', null, toGoogleTask(r, listId in map));
@@ -359,7 +380,7 @@ const GTasks = {
         // Deleted in Google. Keep it only if you edited it here since the last sync.
         if (appChanged) await create(r);
         else {
-          Store.recs[`task:${r.id}`] = { kind: 'task', id: r.id, u: Date.now(), del: true, gid: r.gid };
+          Store.recs[`task:${r.id}`] = { kind: 'task', id: r.id, u: Store.now(), del: true, gid: r.gid };
           Store.persist(); changed = true;
         }
         continue;
@@ -383,7 +404,7 @@ const GTasks = {
     // Tasks added directly in Google Tasks (by you or by Instinct).
     for (const { g, listId } of Object.values(byId)) {
       if (known.has(g.id) || g.deleted || !(g.title || '').trim()) continue;
-      stamp(uid(), { ...fromGoogleTask(g, {}, map[listId] || ''), gid: g.id, glist: listId, gUpd: g.updated });
+      stamp('g' + g.id, { ...fromGoogleTask(g, {}, map[listId] || ''), gid: g.id, glist: listId, gUpd: g.updated });
     }
     if (changed) Store.emit(true);
     return changed;

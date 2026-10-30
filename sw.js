@@ -1,6 +1,6 @@
 // Offline support: app shell is cached; network-first so updates show up right away.
 // Bump VERSION together with the ?v= in index.html on every release.
-const VERSION = 12;
+const VERSION = 13;
 const CACHE = 'planner-v' + VERSION;
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest',
@@ -24,13 +24,19 @@ self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   // Only handle our own files; Google API calls go straight to the network.
   if (e.request.method !== 'GET' || url.origin !== location.origin) return;
+  const fromCache = () => caches.match(e.request, { ignoreSearch: true }).then(r => r || caches.match('index.html'));
+  // 'no-cache' skips GitHub Pages' ~10 minute browser cache, so a release shows up at once.
+  const network = fetch(e.request, { cache: 'no-cache' }).then(res => {
+    if (res.ok) {
+      const copy = res.clone();
+      caches.open(CACHE).then(c => c.put(e.request, copy));
+    }
+    return res;
+  });
+  // On a weak connection don't leave the screen blank: after 4 s use the saved copy
+  // (if there is one); otherwise keep waiting for the network.
+  const slow = new Promise(resolve => setTimeout(() => resolve(fromCache().then(r => r && r.url ? r : null)), 4000));
   e.respondWith(
-    fetch(e.request)
-      .then(res => {
-        const copy = res.clone();
-        caches.open(CACHE).then(c => c.put(e.request, copy));
-        return res;
-      })
-      .catch(() => caches.match(e.request, { ignoreSearch: true }).then(r => r || caches.match('index.html')))
+    Promise.race([network.catch(() => null), slow]).then(r => r || network.catch(fromCache)).then(r => r || fromCache())
   );
 });

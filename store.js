@@ -11,6 +11,9 @@ const LS_TOKEN = 'pp_google_token';
 const LS_CONNECTED = 'pp_google_connected';
 const LS_LAST_SYNC = 'pp_last_sync';
 const LS_SILENT_AT = 'pp_silent_auth_at';
+const LS_BACKUP_DAY = 'pp_backup_day';
+const BACKUP_PREFIX = 'personal-planner-backup-';
+const BACKUPS_KEPT = 7;
 
 const BUILT_IN_CLIENT_ID = '473565270507-slu5h6ngt3sb0210vt975lc1d8ru1k4l.apps.googleusercontent.com';
 const DRIVE_FILE_NAME = 'personal-planner.json';
@@ -32,12 +35,28 @@ function uid() {
   return Math.random().toString(36).slice(2, 14);
 }
 
+// Fields that are bookkeeping, not data.
+const META_FIELDS = new Set(['kind', 'id', 'u', 'fu', 'del']);
+const sameValue = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
 const Store = {
   recs: {},
   listeners: [],
+  maxU: 0,
+
+  // A timestamp that never goes backwards: if this device's clock is behind the
+  // newest edit it has seen, a new edit still counts as newer than that one.
+  now() {
+    this.maxU = Math.max(Date.now(), this.maxU + 1);
+    return this.maxU;
+  },
+  noteTimes(recs) {
+    for (const r of Object.values(recs)) this.maxU = Math.max(this.maxU, r.u || 0);
+  },
 
   load() {
-    try { this.recs = JSON.parse(lsGet(LS_RECORDS, '{}')) || {}; } catch { this.recs = {}; }
+    try { this.recs = cleanRecords(JSON.parse(lsGet(LS_RECORDS, '{}'))); } catch { this.recs = {}; }
+    this.noteTimes(this.recs);
   },
   persist() {
     lsSet(LS_RECORDS, JSON.stringify(this.recs));
@@ -52,26 +71,49 @@ const Store = {
   list(kind) {
     return Object.values(this.recs).filter(r => r.kind === kind && !r.del);
   },
+  // Each field of a record has its own timestamp (fu), so two devices editing
+  // different fields of the same record (or different settings) don't clobber
+  // each other. Saving values that didn't change does nothing.
   put(kind, id, data) {
     const key = `${kind}:${id}`;
-    const prev = this.recs[key] && !this.recs[key].del ? this.recs[key] : {};
-    this.recs[key] = { ...prev, ...data, kind, id, u: Date.now(), del: undefined };
+    const prev = this.recs[key] && !this.recs[key].del ? this.recs[key] : null;
+    const changed = Object.keys(data).filter(k => !META_FIELDS.has(k) && (!prev || !sameValue(prev[k], data[k])));
+    if (prev && !changed.length) return prev;
+    const ts = this.now();
+    const fu = { ...(prev ? fieldTimes(prev) : {}) };
+    for (const k of changed) fu[k] = ts;
+    this.recs[key] = { ...(prev || {}), ...data, kind, id, u: ts, fu, del: undefined };
     this.persist();
     this.emit();
     return this.recs[key];
+  },
+  // Puts records back exactly as they were (undo / restore a backup), as a fresh edit.
+  restore(list) {
+    const ts = this.now();
+    for (const r of list) {
+      const fu = Object.fromEntries(Object.keys(r).filter(k => !META_FIELDS.has(k)).map(k => [k, ts]));
+      this.recs[`${r.kind}:${r.id}`] = { ...r, u: ts, fu, del: undefined };
+    }
+    this.persist();
+    this.emit();
   },
   remove(kind, id) {
     const key = `${kind}:${id}`;
     if (!this.recs[key]) return;
     // Keep the Google Tasks id on the tombstone so the delete reaches Google too.
-    this.recs[key] = { kind, id, u: Date.now(), del: true, gid: this.recs[key].gid };
+    this.recs[key] = { kind, id, u: this.now(), del: true, gid: this.recs[key].gid };
     this.persist();
     this.emit();
   },
   // For sync bookkeeping: writes without triggering another sync round.
   putRaw(kind, id, data) {
     const key = `${kind}:${id}`;
-    this.recs[key] = { ...(this.recs[key] || {}), ...data, kind, id };
+    const prev = this.recs[key] || {};
+    const ts = data.u || Date.now();
+    const fu = { ...fieldTimes(prev) };
+    for (const k of Object.keys(data)) if (!META_FIELDS.has(k) && !sameValue(prev[k], data[k])) fu[k] = ts;
+    this.maxU = Math.max(this.maxU, data.u || 0);
+    this.recs[key] = { ...prev, ...data, kind, id, fu };
     this.persist();
     this.emit(true);
     return this.recs[key];
@@ -84,22 +126,93 @@ const Store = {
   },
   replaceAll(recs) {
     this.recs = recs;
+    this.noteTimes(recs);
     this.persist();
     this.emit(true);
   },
 };
 
+// Records from Drive or an imported file are untrusted: a malformed one must not
+// reach the screens (and then sync to every device). Returns a safe copy, or null.
+function cleanRecord(key, r) {
+  if (!r || typeof r !== 'object' || Array.isArray(r)) return null;
+  if (typeof r.kind !== 'string' || r.id === undefined || key !== `${r.kind}:${r.id}`) return null;
+  if (!Number.isFinite(r.u)) return null;
+  const limit = Date.now() + 5 * 60_000; // a clock that runs ahead can't win forever
+  r = { ...r, u: Math.min(r.u, limit) };
+  if (r.fu && typeof r.fu === 'object') r.fu = Object.fromEntries(Object.entries(r.fu).map(([k, t]) => [k, Math.min(+t || 0, limit)]));
+  else delete r.fu;
+  if (r.del) return { kind: r.kind, id: r.id, u: r.u, del: true, gid: r.gid };
+  const c = { ...r };
+  if (c.kind === 'course') {
+    if (typeof c.code !== 'string' || typeof c.name !== 'string') return null;
+    c.sem = Number.isFinite(+c.sem) ? +c.sem : 0;
+    c.credits = Number.isFinite(+c.credits) ? +c.credits : 0;
+    c.prereqs = Array.isArray(c.prereqs) ? c.prereqs.map(String) : [];
+  } else if (c.kind === 'task') {
+    c.title = String(c.title ?? '');
+  } else if (c.kind === 'slot') {
+    c.day = Number.isFinite(+c.day) ? +c.day : 0;
+  }
+  return c;
+}
+
+function cleanRecords(recs) {
+  const out = {};
+  for (const [key, r] of Object.entries(recs || {})) {
+    const c = cleanRecord(key, r);
+    if (c) out[key] = c;
+  }
+  return out;
+}
+
+// When each field was last written. Records written before per-field stamps existed
+// (or edited without them) count as written, field by field, at the record's own time.
+function fieldTimes(r) {
+  const fields = Object.keys(r).filter(k => !META_FIELDS.has(k));
+  const fu = r.fu || {};
+  const stamped = Math.max(0, ...Object.values(fu));
+  const trusted = r.fu && stamped >= (r.u || 0);
+  return Object.fromEntries(fields.map(k => [k, trusted ? (fu[k] ?? 0) : (r.u || 0)]));
+}
+
+const stable = v => JSON.stringify(v, (k, x) => x && typeof x === 'object' && !Array.isArray(x)
+  ? Object.fromEntries(Object.keys(x).sort().map(n => [n, x[n]])) : x);
+
+// Two copies of one record -> one. A delete (or an undelete) is decided by the
+// record's time; two live copies are merged field by field, newest field wins.
+function mergeRecord(l, r) {
+  if (l.del || r.del) return r.u > l.u ? r : l;
+  const lt = fieldTimes(l), rt = fieldTimes(r);
+  const out = { kind: l.kind, id: l.id }, fu = {};
+  for (const k of new Set([...Object.keys(lt), ...Object.keys(rt)])) {
+    const inL = k in lt, inR = k in rt;
+    let useR;
+    if (!inL) useR = true;
+    else if (!inR) useR = false;
+    else if (rt[k] !== lt[k]) useR = rt[k] > lt[k];
+    else useR = stable(r[k]) > stable(l[k]); // tie: same answer on every device
+    out[k] = useR ? r[k] : l[k];
+    fu[k] = useR ? rt[k] : lt[k];
+  }
+  out.u = Math.max(l.u, r.u);
+  out.fu = fu;
+  return out;
+}
+
 // Returns { merged, localChanged, remoteChanged }.
-function mergeRecords(local, remote) {
+function mergeRecords(local, remoteRaw) {
+  const remote = cleanRecords(remoteRaw);
   const merged = { ...local };
   let localChanged = false, remoteChanged = false;
-  for (const [key, r] of Object.entries(remote)) {
-    const l = local[key];
-    if (!l || r.u > l.u) { merged[key] = r; localChanged = true; }
-  }
-  for (const [key, l] of Object.entries(local)) {
-    const r = remote[key];
-    if (!r || l.u > r.u) remoteChanged = true;
+  for (const key of new Set([...Object.keys(local), ...Object.keys(remote)])) {
+    const l = local[key], r = remote[key];
+    if (!r) { remoteChanged = true; continue; }
+    if (!l) { merged[key] = r; localChanged = true; continue; }
+    const m = mergeRecord(l, r);
+    merged[key] = m;
+    if (stable(m) !== stable(l)) localChanged = true;
+    if (stable(m) !== stable(r)) remoteChanged = true;
   }
   return { merged, localChanged, remoteChanged };
 }
@@ -182,7 +295,9 @@ const Sync = {
 
   disconnect() {
     const t = this.token();
-    if (t) fetch('https://oauth2.googleapis.com/revoke?token=' + t, { method: 'POST' }).catch(() => {});
+    if (t) fetch('https://oauth2.googleapis.com/revoke', {
+      method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ token: t }),
+    }).catch(() => {});
     lsSet(LS_TOKEN, null); lsSet(LS_CONNECTED, null);
     this.fileId = null;
     this.setState('off');
@@ -213,13 +328,53 @@ const Sync = {
     return res;
   },
 
+  // Always asks Drive (a second device may have created its own file in the meantime).
+  // The newest file is the one we use; any others get merged in and then removed.
   async findFile() {
-    if (this.fileId) return this.fileId;
     const q = encodeURIComponent(`name='${DRIVE_FILE_NAME}'`);
     const res = await this.api(`https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=${q}&fields=files(id,modifiedTime)&orderBy=modifiedTime desc`);
-    const { files } = await res.json();
-    this.fileId = files?.[0]?.id || null;
+    const { files = [] } = await res.json();
+    this.fileId = files[0]?.id || null;
+    this.extraIds = files.slice(1).map(f => f.id);
     return this.fileId;
+  },
+
+  async modifiedTime(id) {
+    const res = await this.api(`https://www.googleapis.com/drive/v3/files/${id}?fields=modifiedTime`);
+    return (await res.json()).modifiedTime;
+  },
+
+  // Drive's copy (all files, if there are several) and the time it was last written.
+  async download() {
+    const modified = await this.modifiedTime(this.fileId);
+    let recs = (await (await this.api(`https://www.googleapis.com/drive/v3/files/${this.fileId}?alt=media`)).json()).recs || {};
+    for (const id of this.extraIds || []) {
+      try {
+        const more = (await (await this.api(`https://www.googleapis.com/drive/v3/files/${id}?alt=media`)).json()).recs || {};
+        recs = mergeRecords(cleanRecords(recs), more).merged;
+      } catch (e) { if (e.auth) throw e; }
+    }
+    return { recs, modified };
+  },
+
+  async createFile(name, body) {
+    const boundary = 'pp' + uid();
+    const meta = JSON.stringify({ name, parents: ['appDataFolder'], mimeType: 'application/json' });
+    const multipart =
+      `--${boundary}
+Content-Type: application/json; charset=UTF-8
+
+${meta}
+` +
+      `--${boundary}
+Content-Type: application/json
+
+${body}
+--${boundary}--`;
+    const res = await this.api('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+      method: 'POST', headers: { 'Content-Type': `multipart/related; boundary=${boundary}` }, body: multipart,
+    });
+    return (await res.json()).id;
   },
 
   async upload(recs) {
@@ -228,17 +383,55 @@ const Sync = {
       await this.api(`https://www.googleapis.com/upload/drive/v3/files/${this.fileId}?uploadType=media`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body,
       });
-      return;
+    } else {
+      this.fileId = await this.createFile(DRIVE_FILE_NAME, body);
     }
-    const boundary = 'pp' + uid();
-    const meta = JSON.stringify({ name: DRIVE_FILE_NAME, parents: ['appDataFolder'], mimeType: 'application/json' });
-    const multipart =
-      `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${meta}\r\n` +
-      `--${boundary}\r\nContent-Type: application/json\r\n\r\n${body}\r\n--${boundary}--`;
-    const res = await this.api('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
-      method: 'POST', headers: { 'Content-Type': `multipart/related; boundary=${boundary}` }, body: multipart,
-    });
-    this.fileId = (await res.json()).id;
+    // Duplicate files (two devices created one at the same time) were merged in: remove them.
+    for (const id of this.extraIds || []) {
+      try { await this.api(`https://www.googleapis.com/drive/v3/files/${id}`, { method: 'DELETE' }); } catch (e) { if (e.auth) throw e; }
+    }
+    this.extraIds = [];
+  },
+
+  // Just before writing, check nobody else wrote since we read. If they did, merge
+  // their version in first (up to 3 rounds), so their changes aren't overwritten.
+  // A write can still collide in the last fraction of a second; the next sync repairs it.
+  async mergeLatestBeforeUpload(readAt) {
+    for (let i = 0; i < 3; i++) {
+      if (!this.fileId) {
+        if (!(await this.findFile())) return;
+      } else if (await this.modifiedTime(this.fileId) === readAt) return;
+      const again = await this.download();
+      readAt = again.modified;
+      const m = mergeRecords(Store.recs, again.recs);
+      if (m.localChanged) Store.replaceAll(m.merged);
+    }
+  },
+
+  // A copy of Drive's data as it was before today's first sync, kept for a week
+  // (the last 7 days), so a bad delete or import can be undone from settings.
+  async dailyBackup(recsBefore) {
+    const day = new Date().toISOString().slice(0, 10);
+    if (lsGet(LS_BACKUP_DAY) === day || !Object.keys(recsBefore).length) return;
+    try {
+      const files = await this.listBackups();
+      if (!files.some(f => f.name === `${BACKUP_PREFIX}${day}.json`)) {
+        await this.createFile(`${BACKUP_PREFIX}${day}.json`, JSON.stringify({ v: 1, savedAt: Date.now(), recs: recsBefore }));
+      }
+      for (const f of files.slice(BACKUPS_KEPT - 1)) await this.api(`https://www.googleapis.com/drive/v3/files/${f.id}`, { method: 'DELETE' });
+      lsSet(LS_BACKUP_DAY, day);
+    } catch (e) { if (e.auth) throw e; console.warn('backup', e); }
+  },
+
+  async listBackups() {
+    const q = encodeURIComponent(`name contains '${BACKUP_PREFIX}'`);
+    const res = await this.api(`https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=${q}&fields=files(id,name)&orderBy=name desc&pageSize=50`);
+    return (await res.json()).files || [];
+  },
+
+  async fetchBackup(id) {
+    const res = await this.api(`https://www.googleapis.com/drive/v3/files/${id}?alt=media`);
+    return cleanRecords((await res.json()).recs || {});
   },
 
   async syncNow() {
@@ -253,11 +446,8 @@ const Sync = {
     if (!navigator.onLine) { this.setState('offline', 'אין חיבור לאינטרנט'); return; }
     this.setState('syncing');
     try {
-      let remote = {};
-      if (await this.findFile()) {
-        const res = await this.api(`https://www.googleapis.com/drive/v3/files/${this.fileId}?alt=media`);
-        remote = (await res.json()).recs || {};
-      }
+      let remote = {}, readAt = null;
+      if (await this.findFile()) ({ recs: remote, modified: readAt } = await this.download());
       const { merged, localChanged, remoteChanged } = mergeRecords(Store.recs, remote);
       if (localChanged) Store.replaceAll(merged);
       // Extra syncs (Google Tasks) run between pull and push, so every device
@@ -271,7 +461,11 @@ const Sync = {
           this.hookError = e;
         }
       }
-      if (remoteChanged || hooksChanged || !this.fileId) await this.upload(Store.recs);
+      if (remoteChanged || hooksChanged || !this.fileId || this.extraIds?.length) {
+        await this.mergeLatestBeforeUpload(readAt);
+        await this.upload(Store.recs);
+      }
+      await this.dailyBackup(remote);
       lsSet(LS_LAST_SYNC, String(Date.now()));
       this.setState('ok');
     } catch (e) {

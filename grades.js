@@ -1,8 +1,9 @@
 // Reads the Technion grade sheet PDF (גיליון ציונים) right in the browser and
 // fills in the curriculum map: grades, exemptions and the semester of each course.
 
-const PDFJS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
-const PDFJS_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+// pdf.js 3.11.174 is served from this site (vendor/), so it works offline and no CDN can change it.
+const PDFJS_URL = 'vendor/pdf.min.js';
+const PDFJS_WORKER = 'vendor/pdf.worker.min.js';
 const SEASONS = { 'חורף': 0, 'אביב': 1, 'קיץ': 2 };
 
 function loadPdfJs() {
@@ -19,7 +20,7 @@ function loadPdfJs() {
 // Text of every row in the PDF, cells right-to-left.
 async function pdfRows(file) {
   const pdfjs = await loadPdfJs();
-  const doc = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
+  const doc = await pdfjs.getDocument({ data: await file.arrayBuffer(), isEvalSupported: false }).promise;
   const rows = [];
   for (let p = 1; p <= doc.numPages; p++) {
     const { items } = await (await doc.getPage(p)).getTextContent();
