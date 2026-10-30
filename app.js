@@ -75,6 +75,7 @@ function computeStats() {
 }
 
 // ---------- header ----------
+$('#stats').addEventListener('click', () => go('performance'));
 function renderStats() {
   const s = computeStats();
   const pct = Math.min(100, (s.doneCredits / s.total) * 100);
@@ -179,7 +180,7 @@ $('#tabs').addEventListener('click', e => {
 
 function render() {
   renderStats();
-  const views = { map: renderMap, planner: renderPlanner, tasks: renderTasks, timetable: renderTimetable, settings: renderSettings };
+  const views = { map: renderMap, planner: renderPlanner, performance: renderPerformance, tasks: renderTasks, timetable: renderTimetable, settings: renderSettings };
   (views[currentView] || renderMap)($('#view'));
 }
 
