@@ -174,6 +174,7 @@ const Sync = {
         scope: p.get('scope') || '',
       }));
       lsSet(LS_CONNECTED, '1');
+      return true;
     } else if (p.get('error')) {
       this.setState('needs-auth', p.get('error') === 'access_denied' ? 'ההרשאה בוטלה' : 'נדרש חיבור מחדש');
     }
@@ -300,15 +301,28 @@ const Sync = {
     return false;
   },
 
+  // Automatic sync runs once a day: the first time the app is opened (or comes
+  // back to the front) on a new day. Everything else is on demand: the sync
+  // buttons, or "sync after every change" in settings.
+  dailyDue() { return !this.lastSync || ymd(new Date(this.lastSync)) !== ymd(new Date()); },
+
   start() {
-    this.handleRedirect();
+    const justAuthorized = this.handleRedirect();
     if (!this.clientId || !this.connected) { this.setState('off'); return; }
-    Store.onChange(fromRemote => { if (!fromRemote && this.token()) this.schedule(); });
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible' && this.ensureToken()) this.syncNow();
+    Store.onChange(fromRemote => {
+      if (!fromRemote && settings().syncOnEdit && this.token()) this.schedule();
     });
-    window.addEventListener('online', () => this.syncNow());
-    setInterval(() => { if (document.visibilityState === 'visible' && this.token()) this.syncNow(); }, 60_000);
-    if (this.ensureToken()) this.syncNow();
+    const daily = () => { if (this.dailyDue() && this.ensureToken()) this.syncNow(); };
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') daily(); });
+    window.addEventListener('online', daily);
+    if (justAuthorized && this.token()) this.syncNow();
+    else if (this.dailyDue()) daily();
+    else this.setState('ok');
+  },
+
+  // Manual "sync now": gets a fresh token first if the hour-long one ran out.
+  syncOrAuth() {
+    if (this.ensureToken()) return this.syncNow();
+    return Promise.resolve();
   },
 };

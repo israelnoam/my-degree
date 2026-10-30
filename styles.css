@@ -491,3 +491,15 @@ dialog h2 { margin-bottom: 14px; }
   .perf-grid, .honor-grid { grid-template-columns: 1fr; }
   .kpi b { font-size: 1.4rem; }
 }
+/* ---------- open tasks: header bullet + today/overdue buckets ---------- */
+.tasks-stat { cursor: pointer; }
+.tasks-stat small em { font-style: normal; }
+.tasks-stat small em.late, .tasks-stat.has-late b { color: var(--red); }
+.bucket-title { display: flex; align-items: center; gap: 8px; margin: 16px 0 8px; font-size: .95rem; }
+.bucket-title .count { font-size: .75rem; background: var(--panel-2); border: 1px solid var(--line); border-radius: 99px; padding: 0 8px; color: var(--muted); }
+.bucket-title.overdue { color: var(--red); }
+.bucket-title.today { color: var(--accent); }
+h4.bucket-title { margin: 10px 0 6px; font-size: .85rem; }
+.open-head { display: flex; align-items: center; justify-content: space-between; }
+.link-btn { background: none; border: 0; color: var(--blue); cursor: pointer; font-weight: 700; padding: 0; }
+@media (max-width: 760px) { .tasks-stat { flex: 1; } }

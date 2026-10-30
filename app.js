@@ -86,7 +86,19 @@ function renderStats() {
       <small><b>${fmt(s.doneCredits)}</b> / ${fmt(s.total)} נק״ז · ${fmt(pct, 0)}%</small>
     </div>
     <div class="stat hide-sm"><b>${s.doneCount}</b><small>קורסים הושלמו</small></div>
-    <div class="stat hide-sm"><b>${fmt(s.activeCredits)}</b><small>נק״ז בלימוד</small></div>`;
+    <div class="stat hide-sm"><b>${fmt(s.activeCredits)}</b><small>נק״ז בלימוד</small></div>
+    ${openTasksStat()}`;
+  $('#openTasksStat')?.addEventListener('click', e => { e.stopPropagation(); taskFilter = 'open'; go('tasks'); });
+}
+
+// Header bullet for open tasks; overdue/today counts show underneath.
+function openTasksStat() {
+  const b = taskBuckets();
+  const open = b.overdue.length + b.today.length + b.later.length + b.undated.length;
+  const sub = [b.overdue.length ? `<em class="late">${b.overdue.length} באיחור</em>` : '', b.today.length ? `<em>${b.today.length} להיום</em>` : '']
+    .filter(Boolean).join(' · ') || 'משימות פתוחות';
+  return `<div class="stat tasks-stat ${b.overdue.length ? 'has-late' : ''}" id="openTasksStat" role="button" tabindex="0" title="משימות פתוחות">
+    <b>${open}</b><small>${sub}</small></div>`;
 }
 
 const SYNC_LABELS = {
@@ -96,13 +108,19 @@ const SYNC_LABELS = {
 function renderSyncBtn(state) {
   const b = $('#syncBtn');
   b.dataset.state = state;
-  $('.label', b).textContent = SYNC_LABELS[state] || state;
-  b.title = Sync.message || 'סנכרון עם Google Drive';
+  let label = SYNC_LABELS[state] || state;
+  if (state === 'ok' && Sync.lastSync) {
+    const d = new Date(Sync.lastSync);
+    const time = d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+    label = ymd(d) === ymd(new Date()) ? `סונכרן ${time}` : `סונכרן ${d.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })}`;
+  }
+  $('.label', b).textContent = label;
+  b.title = Sync.message || 'סנכרון אוטומטי פעם ביום · לחץ לסנכרן עכשיו';
 }
 $('#syncBtn').addEventListener('click', () => {
   if (!Sync.clientId) return go('settings');
   if (Sync.state === 'needs-auth' || !Sync.connected) return Sync.authorize();
-  Sync.syncNow();
+  Sync.syncOrAuth();
 });
 
 // One card, one button: shown at the top of the map until Google is fully connected.
@@ -155,9 +173,10 @@ function bindGoogleBar(root) {
     b.disabled = true;
     if (currentView === 'tasks') {
       Sync.hookError = null;
-      Sync.syncNow().then(() => render());
+      Sync.syncOrAuth().then(() => render());
     } else {
       GCal.lastError = null;
+      if (!Sync.ensureToken()) return;
       GCal.fetchWeek(ttWeek, () => render(), true).then(() => render());
       render();
     }
@@ -176,6 +195,12 @@ function go(view) {
 $('#tabs').addEventListener('click', e => {
   const b = e.target.closest('button[data-view]');
   if (b) go(b.dataset.view);
+});
+
+// Any [data-go="view"] button switches tabs (e.g. "open tasks" in the side panel).
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-go]');
+  if (b) { if (b.dataset.go === 'tasks') taskFilter = 'open'; go(b.dataset.go); }
 });
 
 function render() {
@@ -475,15 +500,56 @@ function bindTaskList(root) {
   });
 }
 
+// Open tasks split by urgency: overdue (deadline passed), today, later, no date.
+function taskBuckets() {
+  const todayKey = ymd(new Date());
+  const b = { overdue: [], today: [], later: [], undated: [] };
+  for (const t of tasks()) {
+    if (t.done) continue;
+    if (!t.due) { b.undated.push(t); continue; }
+    const d = dueText(t);
+    if (d.overdue) b.overdue.push(t);
+    else if (t.due.slice(0, 10) === todayKey) b.today.push(t);
+    else b.later.push(t);
+  }
+  return b;
+}
+
+function openTasksPanel() {
+  const b = taskBuckets();
+  const open = b.overdue.length + b.today.length + b.later.length + b.undated.length;
+  return `
+    <h3 class="open-head"><span>✅ משימות פתוחות</span><button class="link-btn" data-go="tasks">${open} ←</button></h3>
+    <h4 class="bucket-title overdue">🔴 באיחור (${b.overdue.length})</h4>
+    ${b.overdue.length ? `<ul class="task-list compact">${b.overdue.map(taskItem).join('')}</ul>` : '<p class="muted">אין משימות באיחור 👏</p>'}
+    <h4 class="bucket-title today">📅 להיום (${b.today.length})</h4>
+    ${b.today.length ? `<ul class="task-list compact">${b.today.map(taskItem).join('')}</ul>` : '<p class="muted">אין משימות להיום</p>'}`;
+}
+
 function upcomingPanel() {
   const now = Date.now(), week = now + 14 * 86_400_000;
-  const up = tasks().filter(t => !t.done && t.due && new Date(t.due).getTime() < week);
+  const todayKey = ymd(new Date());
+  const up = tasks().filter(t => !t.done && t.due && !dueText(t).overdue && t.due.slice(0, 10) !== todayKey && new Date(t.due).getTime() < week);
   const active = courses().filter(c => c.status === 'active');
   return `
+    ${openTasksPanel()}
     <h3>⏰ בשבועיים הקרובים</h3>
     ${up.length ? `<ul class="task-list compact">${up.map(taskItem).join('')}</ul>` : '<p class="muted">אין משימות קרובות 🎉</p>'}
     <h3>📖 בלימוד עכשיו</h3>
     ${active.length ? `<div class="chips">${active.map(c => `<span class="chip">${esc(c.name)}</span>`).join('')}</div>` : '<p class="muted">סמן קורסים כ"בלימוד" כדי לראות אותם כאן.</p>'}`;
+}
+
+// The "open" view, grouped: overdue, today, later, no date (filters still apply).
+function groupedOpenTasks(list) {
+  const ids = new Set(list.map(t => t.id));
+  const b = taskBuckets();
+  const groups = [['overdue', '🔴 משימות באיחור'], ['today', '📅 משימות להיום'], ['later', '🗓️ בהמשך'], ['undated', '📌 בלי תאריך']]
+    .map(([k, title]) => [k, title, b[k].filter(t => ids.has(t.id))])
+    .filter(([, , items]) => items.length);
+  if (!groups.length) return '<p class="empty">אין משימות פתוחות 🎉</p>';
+  return groups.map(([k, title, items]) => `
+    <h3 class="bucket-title ${k}">${title} <span class="count">${items.length}</span></h3>
+    <ul class="task-list">${items.map(taskItem).join('')}</ul>`).join('');
 }
 
 let taskFilter = 'open', taskType = 'all', taskCourse = 'all';
@@ -510,7 +576,7 @@ function renderTasks(root) {
         <select id="fType"><option value="all">כל הסוגים</option>${Object.entries(TASK_TYPES).map(([k, v]) => `<option value="${k}" ${taskType === k ? 'selected' : ''}>${v.label}</option>`).join('')}</select>
         <select id="fCourse"><option value="all">כל הקורסים</option>${usedCourses.map(c => `<option value="${esc(c)}" ${taskCourse === c ? 'selected' : ''}>${esc(courseLabel(c))}</option>`).join('')}</select>
       </div>
-      ${list.length ? `<ul class="task-list">${list.map(taskItem).join('')}</ul>` : '<p class="empty">אין משימות כאן.</p>'}
+      ${taskFilter === 'open' ? groupedOpenTasks(list) : list.length ? `<ul class="task-list">${list.map(taskItem).join('')}</ul>` : '<p class="empty">אין משימות כאן.</p>'}
     </section>`;
   $('#addTask').onclick = () => editTask(null);
   bindGoogleBar(root);
@@ -868,6 +934,8 @@ function renderSettings(root) {
           ? `<button class="btn primary" id="syncNow">🔄 סנכרן עכשיו</button><button class="btn" id="reconnect">התחבר מחדש</button><button class="btn danger" id="disconnect">התנתק</button>`
           : `<button class="btn primary big" id="connect">התחבר עם Google</button>`}
       </div>
+      ${Sync.connected ? `<p class="muted">הסנכרון האוטומטי רץ פעם ביום, בפתיחה הראשונה של האפליקציה באותו יום. בכל רגע אפשר ללחוץ "סנכרן עכשיו".</p>
+      <label class="check"><input type="checkbox" id="syncOnEdit" ${settings().syncOnEdit ? 'checked' : ''}> סנכרן גם מיד אחרי כל שינוי (שימושי כשעובדים על שני מכשירים באותו יום)</label>` : ''}
       ${!isHttps ? '<p class="warn">⚠️ הסנכרון עובד רק כשהאפליקציה מוגשת מכתובת https (למשל GitHub Pages).</p>' : ''}
       <details ${Sync.clientId ? '' : 'open'}>
         <summary>מתקדם: Client ID</summary>
@@ -924,7 +992,8 @@ function renderSettings(root) {
     Sync.authorize();
   });
   $('#reconnect')?.addEventListener('click', () => { saveClientId(); Sync.authorize(); });
-  $('#syncNow')?.addEventListener('click', () => Sync.syncNow().then(() => render()));
+  $('#syncNow')?.addEventListener('click', () => Sync.syncOrAuth().then(() => render()));
+  $('#syncOnEdit')?.addEventListener('change', e => Store.put('meta', 'settings', { syncOnEdit: e.target.checked }));
   $('#disconnect')?.addEventListener('click', () => { if (confirm('לנתק את הסנכרון במכשיר הזה? הנתונים המקומיים יישארו.')) { Sync.disconnect(); render(); } });
   $('#totalCredits').onchange = e => Store.put('meta', 'settings', { totalCredits: +e.target.value || DEGREE_TOTAL_CREDITS });
   $('#nSem').onchange = e => Store.put('meta', 'settings', { semesters: Math.max(1, Math.min(12, +e.target.value || 8)) });

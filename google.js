@@ -40,11 +40,13 @@ const GCal = {
 
   loadCache() {
     try { this.weeks = JSON.parse(lsGet(LS_CAL_CACHE, '{}')) || {}; } catch { this.weeks = {}; }
+    try { this.fetchedAt = JSON.parse(lsGet(LS_CAL_CACHE + '_at', '{}')) || {}; } catch { this.fetchedAt = {}; }
   },
   saveCache() {
     // Keep the 8 most recently fetched weeks for offline use.
     const keys = Object.keys(this.weeks).sort().slice(-8);
     lsSet(LS_CAL_CACHE, JSON.stringify(Object.fromEntries(keys.map(k => [k, this.weeks[k]]))));
+    lsSet(LS_CAL_CACHE + '_at', JSON.stringify(Object.fromEntries(keys.map(k => [k, this.fetchedAt[k] || 0]))));
   },
 
   async listCalendars(force = false) {
@@ -146,7 +148,8 @@ const GCal = {
   async fetchWeek(weekStart, onUpdate, force = false) {
     const key = ymd(weekStart);
     if (!this.ready() || this.loading[key]) return;
-    if (!force && Date.now() - (this.fetchedAt[key] || 0) < 60_000) return;
+    // Each week is fetched once a day (or when you press refresh); otherwise the saved copy is shown.
+    if (!force && this.fetchedAt[key] && ymd(new Date(this.fetchedAt[key])) === ymd(new Date())) return;
     this.loading[key] = true;
     try {
       const end = new Date(weekStart); end.setDate(end.getDate() + 7);
@@ -162,7 +165,7 @@ const GCal = {
     } catch (e) {
       const isNew = this.lastError?.message !== e.message;
       this.lastError = e;
-      this.fetchedAt[key] = Date.now(); // don't hammer Google while it's failing
+      this.fetchedAt[key] = Date.now(); // pause until the next launch; errors aren't saved, so it retries then
       if (e.auth) Sync.setState('needs-auth', 'פג תוקף החיבור');
       else if (isNew) onUpdate?.();
     } finally {
@@ -388,9 +391,9 @@ const GTasks = {
 };
 
 GCal.loadCache();
-// Coming back to the app (e.g. after enabling an API in Google Cloud): retry the calendar.
+// Coming back to the app after a calendar error (e.g. after enabling an API in Google Cloud): retry.
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState !== 'visible') return;
+  if (document.visibilityState !== 'visible' || !GCal.lastError) return;
   GCal.fetchedAt = {};
   GCal.lastError = null;
   if (currentView === 'timetable' || currentView === 'settings') render();
