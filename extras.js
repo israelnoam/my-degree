@@ -94,17 +94,39 @@ function comparablePool() {
   return [...inPlan, ...rest];
 }
 
+// The CheeseFork facts shown for a course, shared by the comparator and the catalog details.
+const cfDate = (g, k) => g[k] ? esc(g[k].replace(/-/g, '.')) : '<span class="muted">—</span>';
+const CF_FACTS = {
+  prereqs: (g, check = doneCode8Check()) => {
+    const ok = evalPrereqs(g['מקצועות קדם'], check).ok;
+    return `${prereqHtml(g['מקצועות קדם'])}${g['מקצועות קדם'] ? `<br>${ok ? '<span class="ok-t">✓ מולאו</span>' : '<span class="bad-t">חסרות</span>'}` : ''}`;
+  },
+  moedA: g => cfDate(g, 'מועד א'),
+  moedB: g => cfDate(g, 'מועד ב'),
+  staff: g => esc(g['אחראים'] || '—'),
+  groups: groups => Object.entries(groups).map(([t, gs]) => `${esc(t)}: ${Object.keys(gs).length}`).join('<br>') || '<span class="muted">—</span>',
+  syllabus: (g, max) => g['סילבוס'] ? esc(max ? String(g['סילבוס']).slice(0, max) + '…' : g['סילבוס']) : '<span class="muted">—</span>',
+};
+
+// Gives up after `ms`, so a slow CheeseFork never leaves a spinner forever.
+const withTimeout = (p, ms = 15000) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('CheeseFork לא הגיב')), ms))]);
+
 async function openComparator(preset) {
   if (preset) cmpPick = [preset, ...cmpPick.filter(c => c && c !== preset)].concat(['', '', '']).slice(0, 3);
   const pool = comparablePool();
   const info = await Promise.all(cmpPick.map(async c => {
     if (!c) return null;
-    const crs = await cfCourse(c);
+    const crs = await withTimeout(cfCourse(c)).catch(() => null);
     return { code: c, pool: pool.find(p => p.code === c), cf: crs, g: crs?.general || {}, groups: cfGroups(crs) };
   }));
-  const opt = sel => `<option value="">— בחר קורס —</option>
-    <optgroup label="בתוכנית שלי">${pool.filter(p => p.plan).map(p => `<option value="${esc(p.code)}" ${p.code === sel ? 'selected' : ''}>${esc(p.name)} (${esc(p.code)})</option>`).join('')}</optgroup>
-    <optgroup label="קורסי בחירה">${pool.filter(p => !p.plan).map(p => `<option value="${esc(p.code)}" ${p.code === sel ? 'selected' : ''}>${esc(p.name)} (${esc(p.code)})</option>`).join('')}</optgroup>`;
+  // One search box per slot: type a name or number and pick from the matches.
+  const slot = (code, i) => {
+    const p = pool.find(x => x.code === code);
+    return `<div class="cmp-slot">
+      <div class="cmp-q"><input type="search" data-cmpq="${i}" autocomplete="off" placeholder="${p ? esc(`${p.name} (${p.code})`) : '🔍 חפש קורס לפי שם או מספר'}" aria-label="קורס ${i + 1}">
+        ${p ? `<button type="button" class="link-btn" data-cmpclear="${i}" title="הסר" aria-label="הסר">×</button>` : ''}</div>
+      <div class="cmp-results" data-cmpres="${i}" hidden></div></div>`;
+  };
   const chosen = info.filter(Boolean);
   const check = doneCode8Check();
   const examOf = (i, k) => parseCfDate(i.g[k]);
@@ -131,27 +153,50 @@ async function openComparator(preset) {
   openWide(`
     <h2>⚖️ השוואת קורסים</h2>
     <p class="muted">בחר עד שלושה קורסים ליד זה. הנתונים מ-CheeseFork לסמסטר הנוכחי (או האחרון שפורסם).</p>
-    <div class="cmp-pick">${cmpPick.map((s, i) => `<select data-cmp="${i}">${opt(s)}</select>`).join('')}</div>
+    <div class="cmp-pick">${cmpPick.map(slot).join('')}</div>
     ${chosen.length ? `<div class="tbl-wrap"><table class="cmp">
       ${row('קורס', i => `<b>${esc(i.pool?.name || i.code)}</b><br><small class="muted">${esc(i.code)}</small>`)}
       ${row('נק״ז', i => fmt(i.pool?.credits ?? 0))}
       ${row('קטגוריה', i => { const l = LISTS[i.pool?.list]; return l ? `<span class="lbadge" style="--lc:${l.color}">${esc(l.name)}</span>` : 'חובה'; })}
       ${row('בתוכנית', i => { const c = courseByCode(i.code); return c ? `${STATUS[courseState(c)].icon} ${STATUS[courseState(c)].label}${c.sem ? ` · ${esc(semName(c.sem))}` : ''}` : 'לא'; })}
       ${row('נפתח', i => CF.offeredIn(i.code).sort().map(cfKeyLabel).map(esc).join(', ') || '<span class="muted">לא נמצא</span>')}
-      ${row('דרישות קדם', i => { const ok = evalPrereqs(i.g['מקצועות קדם'], check).ok; return `${prereqHtml(i.g['מקצועות קדם'])}${i.g['מקצועות קדם'] ? `<br>${ok ? '<span class="ok-t">✓ מולאו</span>' : '<span class="bad-t">חסרות</span>'}` : ''}`; })}
-      ${row('מועד א׳', i => i.g['מועד א'] ? esc(i.g['מועד א'].replace(/-/g, '.')) : '<span class="muted">—</span>')}
-      ${row('מועד ב׳', i => i.g['מועד ב'] ? esc(i.g['מועד ב'].replace(/-/g, '.')) : '<span class="muted">—</span>')}
-      ${row('אחראי', i => esc(i.g['אחראים'] || '—'))}
-      ${row('קבוצות', i => Object.entries(i.groups).map(([t, gs]) => `${esc(t)}: ${Object.keys(gs).length}`).join('<br>') || '<span class="muted">—</span>')}
-      ${row('סילבוס', i => i.g['סילבוס'] ? `<small>${esc(String(i.g['סילבוס']).slice(0, 260))}…</small>` : '<span class="muted">—</span>')}
+      ${row('דרישות קדם', i => CF_FACTS.prereqs(i.g, check))}
+      ${row('מועד א׳', i => CF_FACTS.moedA(i.g))}
+      ${row('מועד ב׳', i => CF_FACTS.moedB(i.g))}
+      ${row('אחראי', i => CF_FACTS.staff(i.g))}
+      ${row('קבוצות', i => CF_FACTS.groups(i.groups))}
+      ${row('סילבוס', i => `<small>${CF_FACTS.syllabus(i.g, 260)}</small>`)}
     </table></div>` : '<p class="empty">בחר קורס כדי להתחיל.</p>'}
     ${notes.length ? `<div class="cmp-notes">${notes.map(n => `<p>${n}</p>`).join('')}</div>` : ''}
     ${closeBtn}`, form => {
-    $$('[data-cmp]', form).forEach(sel => sel.onchange = () => {
-      cmpPick[+sel.dataset.cmp] = sel.value;
+    const pick = (i, code) => {
+      cmpPick[i] = code;
       $('#modal').close();
       setTimeout(openComparator, 30);
+    };
+    const matches = q => {
+      q = norm(q.trim());
+      return q ? pool.filter(p => !cmpPick.includes(p.code) && (norm(p.name).includes(q) || p.code.includes(q))).slice(0, 40) : [];
+    };
+    $$('[data-cmpq]', form).forEach(input => {
+      const i = +input.dataset.cmpq, res = $(`[data-cmpres="${i}"]`, form);
+      input.oninput = () => {
+        const m = matches(input.value);
+        res.hidden = !input.value.trim();
+        const group = (title, list) => list.length ? `<div class="cmp-gh">${title}</div>${list.map(p =>
+          `<button type="button" class="cmp-opt" data-code="${esc(p.code)}">${esc(p.name)} <small class="muted">${esc(p.code)}</small></button>`).join('')}` : '';
+        res.innerHTML = m.length ? group('בתוכנית שלי', m.filter(p => p.plan)) + group('קורסי בחירה', m.filter(p => !p.plan)) : '<p class="muted">לא נמצא קורס.</p>';
+      };
+      // Enter takes the first match (and must not submit the dialog's form).
+      input.onkeydown = e => {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        const first = matches(input.value)[0];
+        if (first) pick(i, first.code);
+      };
+      res.onclick = e => { const b = e.target.closest('[data-code]'); if (b) pick(i, b.dataset.code); };
     });
+    $$('[data-cmpclear]', form).forEach(b => b.onclick = () => pick(+b.dataset.cmpclear, ''));
   });
 }
 
@@ -369,7 +414,7 @@ function openFaq() {
       ['מועדים מיוחדים והתאמות', 'מועד מיוחד למבחן שהוחמץ בגלל שירות, תוספת זמן של 25%, הארכת הגשות לפי ימי השירות ומטלה חלופית בשירות ארוך. פירוט מלא וההתאמות לפי הקבוצה שלך בטאב תכנון תואר ← מילואים.'],
       ['סמסטר קיץ ושכר לימוד', 'פטור משכר לימוד לקורס אחד עם 22+ ימי שירות בשנה, ולשני קורסים עם 30+.'],
     ] : []),
-    ['מה זה סמסטר קיץ בתוכנית?', 'אפשר להוסיף סמסטר קיץ אחרי כל סמסטר אביב דרך 🧰 ← ניהול סמסטרים, ולשבץ אליו קורסים כמו לכל סמסטר אחר.'],
+    ['מה זה סמסטר קיץ בתוכנית?', 'אפשר להוסיף סמסטר קיץ אחרי כל סמסטר אביב דרך תכנון תואר ← 🗓️ סמסטרים, ולשבץ אליו קורסים כמו לכל סמסטר אחר.'],
   ];
   openWide(`
     <h2>📖 זכויות ושאלות נפוצות</h2>
@@ -407,6 +452,9 @@ function openPalette() {
     { icon: '📖', label: 'זכויות ושאלות נפוצות', hint: 'פעולה', run: openFaq },
     { icon: '📸', label: 'ייצוא מפת הקורסים כתמונה', hint: 'פעולה', run: exportMapPng },
     { icon: '🖨️', label: 'הדפסת התוכנית', hint: 'פעולה', run: printPlan },
+    { icon: '🤖', label: 'יועץ תואר (AI)', hint: 'שאל על התואר שלך', run: () => openAdvisor() },
+    { icon: '🧭', label: 'סיור באפליקציה', hint: 'מדריך', run: () => startTour() },
+    { icon: '⚙️', label: 'הגדרות', hint: 'מעבר למסך', run: () => go('settings') },
   ];
   const search = q => {
     q = norm(q.trim());
@@ -499,21 +547,7 @@ function printPlan() {
 }
 
 // ---------- wiring: header buttons and per-view buttons ----------
-function openTools() {
-  const items = [
-    ['⚖️ השוואת קורסים', () => openComparator()],
-    ['📅 לוח מבחנים ומרווחים', openExamCalendar],
-    ['✨ מחולל מערכות שעות', openTimetableGenerator],
-    ['🗓️ ניהול סמסטרים וקיץ', openSemesterManager],
-    ['📖 זכויות ושאלות נפוצות', openFaq],
-    ['📸 ייצוא מפת הקורסים (PNG)', exportMapPng],
-    ['🖨️ הדפסת התוכנית', printPlan],
-  ];
-  openWide(`<h2>🧰 כלים</h2><div class="tools-grid">${items.map(([l], i) => `<button class="btn" type="button" data-tool="${i}">${l}</button>`).join('')}</div>${closeBtn}`, form => {
-    $$('[data-tool]', form).forEach(b => b.onclick = () => { $('#modal').close(); setTimeout(items[+b.dataset.tool][1], 30); });
-  });
-}
-
+// Each tool lives on the screen it belongs to (map, planner, timetable, settings) and in the Ctrl+K palette.
 function addHeaderButtons() {
   const sync = $('#syncBtn');
   if (!sync || $('#xSearch')) return;
@@ -524,7 +558,7 @@ function addHeaderButtons() {
   };
   mk('xSearch', '🔍', 'חיפוש מהיר (Ctrl+K)', openPalette);
   mk('xBell', '🔔', 'התראות', openNotifications, '<i class="badge" hidden></i>');
-  mk('xTools', '🧰', 'כלים', openTools);
+  mk('xAdvisor', '🤖', 'יועץ תואר (AI)', () => openAdvisor());
   mk('xSettings', '⚙️', 'הגדרות', () => go('settings'));
 }
 
@@ -539,7 +573,8 @@ function injectViewButtons() {
   }
   const planTb = $('#view .panel > .toolbar');
   if (currentView === 'planner' && planTb && !$('#xSemMgr')) {
-    planTb.insertAdjacentHTML('beforeend', '<div class="row wrap no-print"><button class="btn small" id="xSemMgr" type="button">🗓️ סמסטרים</button><button class="btn small" id="xExams" type="button">📅 מבחנים</button><button class="btn small" id="xPrint" type="button">🖨️ הדפסה</button></div>');
+    planTb.insertAdjacentHTML('beforeend', '<div class="row wrap no-print"><button class="btn small" id="xSemMgr" type="button">🗓️ סמסטרים</button><button class="btn small" id="xExams" type="button">📅 מבחנים</button><button class="btn small" id="xPrint" type="button">🖨️ הדפסה</button><button class="btn small primary" id="xAdv" type="button">🤖 יועץ תואר</button></div>');
+    $('#xAdv').onclick = () => openAdvisor();
     $('#xSemMgr').onclick = openSemesterManager;
     $('#xExams').onclick = openExamCalendar;
     $('#xPrint').onclick = printPlan;

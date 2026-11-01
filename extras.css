@@ -11,8 +11,6 @@
 .hbtn .badge[hidden] { display: none; }
 
 dialog.wide { width: min(860px, calc(100vw - 24px)); }
-.tools-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
-.tools-grid .btn { text-align: start; padding: 12px; }
 .tbl-wrap { overflow-x: auto; }
 .grow { flex: 1; min-width: 0; }
 
@@ -32,6 +30,18 @@ dialog.wide { width: min(860px, calc(100vw - 24px)); }
 
 /* comparator */
 .cmp-pick { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; margin-bottom: 12px; }
+.cmp-slot { position: relative; min-width: 0; }
+.cmp-q { display: flex; align-items: center; gap: 6px; }
+.cmp-q input { flex: 1; min-width: 0; }
+.cmp-q input::placeholder { color: var(--text); opacity: .75; }
+.cmp-q .link-btn { font-size: 1.2rem; padding: 0 4px; }
+.cmp-results { margin-top: 4px; max-height: 260px; overflow-y: auto;
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; padding: 4px; }
+.cmp-results[hidden] { display: none; }
+.cmp-results p { margin: 6px 8px; }
+.cmp-gh { font-size: .75rem; color: var(--muted); padding: 6px 8px 2px; }
+.cmp-opt { display: block; width: 100%; text-align: start; background: none; border: 0; border-radius: 8px; padding: 7px 8px; cursor: pointer; }
+.cmp-opt:hover, .cmp-opt:focus { background: var(--panel-2); outline: none; }
 table.cmp { width: 100%; border-collapse: collapse; font-size: .9rem; }
 table.cmp th { text-align: start; color: var(--muted); font-weight: 600; width: 96px; white-space: nowrap; }
 table.cmp th, table.cmp td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
@@ -72,3 +82,54 @@ table.cmp th, table.cmp td { padding: 7px 8px; border-bottom: 1px solid var(--li
   .pchip, .pcol { background: #fff !important; color: #000 !important; border-color: #999 !important; }
   .pcols { overflow: visible !important; grid-auto-flow: row !important; grid-template-columns: repeat(3, 1fr) !important; }
 }
+
+/* catalog: per-course details (loaded on open) */
+.ci-details { margin-top: 4px; }
+.ci-details summary { cursor: pointer; font-size: .82rem; color: var(--blue); width: fit-content; }
+.ci-body { margin-top: 8px; padding: 8px 10px; background: var(--panel); border-radius: 8px; font-size: .88rem; }
+.ci-facts { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; margin: 0 0 8px; }
+.ci-facts dt { color: var(--muted); }
+.ci-facts dd { margin: 0; }
+.ci-syl { margin: 0 0 8px; line-height: 1.55; white-space: pre-line; max-height: 220px; overflow-y: auto; }
+
+/* task modal: Google Tasks / Calendar */
+.g-links { display: grid; gap: 6px; margin: 10px 0 4px; }
+.g-link { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; font-size: .88rem; }
+.g-link [hidden] { display: none; }
+
+/* AI degree advisor */
+#xAdvisorDlg { width: min(760px, calc(100vw - 24px)); height: min(720px, calc(100dvh - 40px)); padding: 16px; display: none; flex-direction: column; gap: 10px; }
+#xAdvisorDlg[open] { display: flex; }
+.adv-head { display: flex; align-items: center; gap: 8px; }
+.adv-head h2 { margin: 0; }
+.adv-log { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 4px; }
+.adv-msg { max-width: 88%; padding: 9px 13px; border-radius: 14px; line-height: 1.55; overflow-wrap: anywhere; }
+.adv-msg.user { align-self: flex-start; background: #1c3156; border: 1px solid var(--blue); }
+.adv-msg.assistant { align-self: flex-end; background: var(--panel-2); border: 1px solid var(--line); }
+.adv-li { display: block; padding-inline-start: 14px; position: relative; }
+.adv-li::before { content: '•'; position: absolute; inset-inline-start: 2px; color: var(--accent); }
+.adv-intro .chips { margin-top: 10px; }
+.adv-intro .chip { cursor: pointer; }
+.adv-form { display: flex; gap: 8px; align-items: flex-end; }
+.adv-form textarea { flex: 1; resize: none; }
+.adv-note { margin: 0; font-size: .78rem; }
+
+/* guided tour */
+.tour { position: fixed; inset: 0; z-index: 1000; }
+.tour-spot { position: fixed; border-radius: 12px; box-shadow: 0 0 0 9999px rgba(3, 7, 15, .72); outline: 2px solid var(--accent);
+  transition: top .25s, left .25s, width .25s, height .25s; pointer-events: none; }
+.tour-spot.none { top: 50% !important; left: 50% !important; width: 0 !important; height: 0 !important; outline: 0; }
+.tour-card { position: fixed; width: min(360px, calc(100vw - 32px)); background: var(--panel); border: 1px solid var(--accent);
+  border-radius: 14px; padding: 14px 16px; box-shadow: 0 16px 40px rgba(0, 0, 0, .5); transition: top .25s, left .25s; }
+.tour-card h3 { margin: 6px 0; }
+.tour-card p { margin: 0 0 12px; color: var(--text); line-height: 1.55; }
+.tour-prog { display: flex; align-items: center; gap: 10px; font-size: .75rem; color: var(--muted); }
+.tour-prog .bar { flex: 1; height: 5px; }
+
+@media (max-width: 760px) {
+  .cmp-pick { grid-template-columns: 1fr; }
+  #xAdvisorDlg { height: calc(100dvh - 24px); }
+  .adv-msg { max-width: 96%; }
+}
+#xAdvisorDlg .adv-form { padding: 0; overflow: visible; max-height: none; }

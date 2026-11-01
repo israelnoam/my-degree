@@ -120,6 +120,9 @@ function computeStats() {
 }
 
 // ---------- header ----------
+// The header's height (it wraps to two rows on phones), so the Google sync bar can stick right under it.
+new ResizeObserver(([e]) => document.documentElement.style.setProperty('--topbar-h', `${Math.floor(e.target.getBoundingClientRect().height)}px`))
+  .observe($('.topbar'));
 // The stats block (credits, average) is the way into the performance centre.
 $('#stats').addEventListener('click', () => go('performance'));
 $('#stats').title = 'מרכז ביצועים ונתוני תואר';
@@ -200,11 +203,12 @@ function bindConnectCard(root) {
 function googleBar(kind) {
   const name = kind === 'tasks' ? 'Google Tasks' : 'Google Calendar';
   const icon = kind === 'tasks' ? '✅' : '📅';
+  const open = `<a class="btn" href="${kind === 'tasks' ? GTASKS_URL : GCAL_URL}" target="_blank" rel="noopener" title="פתח את ${name}">↗ פתח</a>`;
   if (!Sync.connected) {
-    return `<div class="gbar"><span>${icon} ${name}: <b>לא מחובר</b></span><button class="btn primary" data-gbar="connect">התחבר עם Google</button></div>`;
+    return `<div class="gbar"><span>${icon} ${name}: <b>לא מחובר</b></span><span class="row">${open}<button class="btn primary" data-gbar="connect">התחבר עם Google</button></span></div>`;
   }
   if (!Sync.hasScope(kind)) {
-    return `<div class="gbar"><span>${icon} ${name}: <b>צריך אישור</b></span><button class="btn primary" data-gbar="connect">אשר גישה</button></div>`;
+    return `<div class="gbar"><span>${icon} ${name}: <b>צריך אישור</b></span><span class="row">${open}<button class="btn primary" data-gbar="connect">אשר גישה</button></span></div>`;
   }
   const busy = kind === 'tasks' ? Sync.state === 'syncing' : GCal.loading[ymd(ttWeek)];
   const when = kind === 'tasks' ? Sync.lastSync : GCal.fetchedAt[ymd(ttWeek)];
@@ -212,7 +216,7 @@ function googleBar(kind) {
   const status = busy ? 'מסנכרן…' : !ok ? 'יש בעיה (פרטים למטה)'
     : when ? `מסונכרן · ${new Date(when).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}` : 'מתחבר…';
   return `<div class="gbar ${ok ? 'ok' : 'bad'}"><span>${icon} ${name}: <b>${status}</b></span>
-    <button class="btn" data-gbar="sync" ${busy ? 'disabled' : ''}>🔄 ${kind === 'tasks' ? 'סנכרן' : 'רענן'}</button></div>`;
+    <span class="row">${open}<button class="btn" data-gbar="sync" ${busy ? 'disabled' : ''}>🔄 ${kind === 'tasks' ? 'סנכרן' : 'רענן'}</button></span></div>`;
 }
 function bindGoogleBar(root) {
   $$('[data-gbar]', root).forEach(b => b.onclick = () => {
@@ -578,26 +582,31 @@ function taskBuckets() {
   return b;
 }
 
-function openTasksPanel() {
-  const b = taskBuckets();
-  const open = b.overdue.length + b.today.length + b.later.length + b.undated.length;
+// Open tasks due by the end of the day `days` from today (overdue ones included).
+function tasksWithin(days) {
+  const end = new Date(); end.setHours(0, 0, 0, 0); end.setDate(end.getDate() + days + 1);
+  return tasks().filter(t => !t.done && t.due && new Date(t.due.length === 10 ? t.due + 'T00:00' : t.due) < end);
+}
+
+// The coming week, overdue first (tasks() is sorted by due date), each flagged by taskItem.
+function weekTasksPanel() {
+  const week = tasksWithin(7);
+  const late = week.filter(t => dueText(t).overdue).length;
+  const open = tasks().filter(t => !t.done).length;
   return `
-    <h3 class="open-head"><span>✅ משימות פתוחות</span><button class="link-btn" data-go="tasks">${open} ←</button></h3>
-    <h4 class="bucket-title overdue">🔴 באיחור (${b.overdue.length})</h4>
-    ${b.overdue.length ? `<ul class="task-list compact">${b.overdue.map(taskItem).join('')}</ul>` : '<p class="muted">אין משימות באיחור 👏</p>'}
-    <h4 class="bucket-title today">📅 להיום (${b.today.length})</h4>
-    ${b.today.length ? `<ul class="task-list compact">${b.today.map(taskItem).join('')}</ul>` : '<p class="muted">אין משימות להיום</p>'}`;
+    <h3 class="open-head"><span>📅 משימות לשבוע הקרוב</span><button class="link-btn" data-go="tasks" title="לכל המשימות הפתוחות">${open} פתוחות ←</button></h3>
+    ${late ? `<p class="bucket-title overdue">🔴 ${late} באיחור</p>` : ''}
+    ${week.length ? `<ul class="task-list compact">${week.map(taskItem).join('')}</ul>` : '<p class="muted">אין משימות בשבוע הקרוב 🎉</p>'}`;
 }
 
 function upcomingPanel() {
-  const now = Date.now(), week = now + 14 * 86_400_000;
-  const todayKey = ymd(new Date());
-  const up = tasks().filter(t => !t.done && t.due && !dueText(t).overdue && t.due.slice(0, 10) !== todayKey && new Date(t.due).getTime() < week);
+  const weekIds = new Set(tasksWithin(7).map(t => t.id));
+  const up = tasksWithin(14).filter(t => !weekIds.has(t.id));
   const active = courses().filter(c => c.status === 'active');
   return `
-    ${openTasksPanel()}
-    <h3>⏰ בשבועיים הקרובים</h3>
-    ${up.length ? `<ul class="task-list compact">${up.map(taskItem).join('')}</ul>` : '<p class="muted">אין משימות קרובות 🎉</p>'}
+    ${weekTasksPanel()}
+    <h3>⏰ בשבוע שאחריו</h3>
+    ${up.length ? `<ul class="task-list compact">${up.map(taskItem).join('')}</ul>` : '<p class="muted">אין משימות 🎉</p>'}
     <h3>📖 בלימוד עכשיו</h3>
     ${active.length ? `<div class="chips">${active.map(c => `<span class="chip">${esc(c.name)}</span>`).join('')}</div>` : '<p class="muted">סמן קורסים כ"בלימוד" כדי לראות אותם כאן.</p>'}`;
 }
@@ -671,6 +680,11 @@ function editTask(id, defaults = {}) {
     </div>
     <label class="full">הערות<textarea name="notes" rows="2">${esc(t.notes)}</textarea></label>
     <label class="check"><input type="checkbox" name="done" ${t.done ? 'checked' : ''}> בוצע</label>
+    <div class="g-links">
+      <div class="g-link"><span id="gTaskNote"></span><a class="btn small" href="${GTASKS_URL}" target="_blank" rel="noopener">↗ פתח ב-Google Tasks</a></div>
+      <div class="g-link"><span>📅 Google Calendar: <b>הוספה ליומן</b> <small class="muted">(האפליקציה רק קוראת את היומן, אז ההוספה נעשית בחלון של Google)</small></span>
+        <a class="btn small" id="gCalAdd" target="_blank" rel="noopener">＋ הוסף ליומן</a></div>
+    </div>
     <div class="actions">
       ${id ? '<button class="btn danger" value="delete" formnovalidate>מחק</button>' : ''}
       <span class="spacer"></span>
@@ -684,8 +698,58 @@ function editTask(id, defaults = {}) {
       title: fd.get('title').trim(), type: fd.get('type'), course: fd.get('course'),
       due: date ? (time ? `${date}T${time}` : date) : '', notes: fd.get('notes'), done: fd.get('done') === 'on',
     });
-    toast('נשמר');
+    toast(GTasks.ready() ? 'נשמר · יסונכרן ל-Google Tasks' : 'נשמר');
+    if (GTasks.ready() && Sync.token()) Sync.schedule(1500);
+  },
+  form => {
+    // Keep the Google notes in step with the form: which list the task lands in, and a prefilled calendar link.
+    const update = () => {
+      const fd = new FormData(form);
+      const listName = taskListTitle(fd.get('course'));
+      $('#gTaskNote', form).innerHTML = GTasks.ready()
+        ? `✅ Google Tasks: <b class="ok-t">מסתנכרן</b> לרשימה "${esc(listName)}"`
+        : `✅ Google Tasks: <b class="bad-t">${Sync.connected ? 'הסנכרון כבוי' : 'לא מחובר'}</b> <small class="muted">(אפשר להפעיל ב⚙️ הגדרות כדי שהמשימה תופיע שם)</small>`;
+      const link = $('#gCalAdd', form), url = calendarAddUrl(fd);
+      link.toggleAttribute('hidden', !url);
+      if (url) link.href = url;
+    };
+    form.addEventListener('input', update);
+    form.addEventListener('change', update);
+    update();
   });
+}
+
+const GTASKS_URL = 'https://tasks.google.com/';
+const GCAL_URL = 'https://calendar.google.com/';
+
+// The Google Tasks list a task with this course syncs into (the course's own list, else the default one).
+function taskListTitle(course) {
+  const lists = GTasks.lists;
+  if (course && lists) {
+    const id = Object.entries(GTasks.courseMap(lists)).find(([, code]) => code === course)?.[0];
+    const l = id && lists.find(x => x.id === id);
+    if (l) return l.title;
+  }
+  return TASKS_LIST_TITLE;
+}
+
+// A Google Calendar "new event" link filled from the task form. All-day without a time; exams get 3 hours.
+function calendarAddUrl(fd) {
+  const date = fd.get('date'), time = fd.get('time'), title = (fd.get('title') || '').trim();
+  if (!date || !title) return '';
+  const compact = s => s.replace(/[-:]/g, '');
+  let dates;
+  if (time) {
+    const start = new Date(`${date}T${time}`), end = new Date(start.getTime() + (fd.get('type') === 'exam' ? 180 : 60) * 60000);
+    const local = d => `${ymd(d)}T${hhmm(d.getHours() * 60 + d.getMinutes())}00`;
+    dates = `${compact(local(start))}/${compact(local(end))}`;
+  } else {
+    const next = new Date(`${date}T00:00`); next.setDate(next.getDate() + 1);
+    dates = `${compact(date)}/${compact(ymd(next))}`;
+  }
+  const course = fd.get('course') ? courseLabel(fd.get('course')) : '';
+  const q = new URLSearchParams({ action: 'TEMPLATE', text: course ? `${title} – ${course}` : title, dates, ctz: 'Asia/Jerusalem', details: fd.get('notes') || '' });
+  return `${GCAL_URL}calendar/render?${q}`;
 }
 
 // ---------- timetable (weekly, with Google Calendar events) ----------
@@ -1099,6 +1163,16 @@ function renderSettings(root) {
     </section>
 
     <section class="panel narrow">
+      <h2>❓ עזרה ומידע</h2>
+      <p class="muted">סיור קצר שמראה כל מה שהאפליקציה יודעת לעשות, תשובות על זכויות ונהלים, ויועץ AI שעונה לפי הנתונים שלך.</p>
+      <div class="row wrap">
+        <button class="btn primary" id="setTour">🧭 סיור באפליקציה</button>
+        <button class="btn" id="setFaq">📖 זכויות ושאלות נפוצות</button>
+        <button class="btn" id="setAdvisor">🤖 יועץ תואר</button>
+      </div>
+    </section>
+
+    <section class="panel narrow">
       <h2>💾 גיבוי</h2>
       <div class="row wrap">
         <button class="btn" id="exportBtn">⬇️ ייצוא לקובץ</button>
@@ -1137,6 +1211,9 @@ function renderSettings(root) {
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   };
   $('#importBtn').onclick = () => $('#importFile').click();
+  $('#setTour').onclick = () => startTour();
+  $('#setFaq').onclick = () => openFaq();
+  $('#setAdvisor').onclick = () => openAdvisor();
   $('#resetCurriculum').onclick = () => {
     if (!confirm('לאפס את כל הקורסים לתוכנית ברירת המחדל?')) return;
     const snaps = snapshot(courses().map(c => `course:${c.code}`));

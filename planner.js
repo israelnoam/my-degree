@@ -155,10 +155,55 @@ function catalogHtml() {
           <small class="muted">${esc(i.code)} · ${fmt(i.credits)} נק״ז · <span class="lbadge" style="--lc:${LISTS[i.list].color}">${LISTS[i.list].short}</span>
             ${i.offered.length ? ` · נפתח: ${i.offered.sort().map(cfKeyLabel).join(', ')}` : cfLoaded ? ' · לא נפתח לאחרונה' : ''}
             ${i.prereqOk === true ? ' · <span class="ok-t">✓ דרישות קדם</span>' : i.prereqOk === false ? ' · <span class="bad-t">חסרות דרישות קדם</span>' : ''}</small>
+          <details class="ci-details" data-cfd="${esc(i.code)}" ${catDetailsOpen.has(i.code) ? 'open' : ''}><summary>ℹ️ פרטים, סילבוס ומועדים</summary>
+            <div class="ci-body">${catDetailsCache[i.code] || '<p class="muted">טוען מ-CheeseFork…</p>'}</div></details>
         </div>
         ${i.planned ? `<button class="btn small" data-code="${esc(i.code)}">${i.course?.sem ? `סמסטר ${i.course.sem}` : 'בתוכנית'}</button>`
           : `<button class="btn small primary" data-addcat="${esc(i.code)}">＋ לתוכנית</button>`}
       </div>`).join('') || '<p class="empty">לא נמצאו קורסים.</p>'}</div>`;
+}
+
+// Course details load only when you open them, and stay open (and cached) across re-renders.
+const catDetailsOpen = new Set(), catDetailsLoading = new Set(), catDetailsCache = {};
+
+async function loadCatDetails(code) {
+  try {
+    const crs = await withTimeout(cfCourse(code));
+    if (!crs) return '<p class="muted">הקורס לא מופיע ב-CheeseFork בסמסטרים האחרונים.</p>';
+    const g = crs.general || {};
+    return `<dl class="ci-facts">
+      <dt>דרישות קדם</dt><dd>${CF_FACTS.prereqs(g)}</dd>
+      <dt>מועד א׳</dt><dd>${CF_FACTS.moedA(g)}</dd>
+      <dt>מועד ב׳</dt><dd>${CF_FACTS.moedB(g)}</dd>
+      <dt>אחראים</dt><dd>${CF_FACTS.staff(g)}</dd>
+      <dt>קבוצות</dt><dd>${CF_FACTS.groups(cfGroups(crs))}</dd>
+    </dl>
+    <p class="ci-syl"><b>סילבוס:</b> ${CF_FACTS.syllabus(g)}</p>
+    <button type="button" class="btn small" data-cmpcode="${esc(code)}">⚖️ השווה לקורסים אחרים</button>`;
+  } catch (e) {
+    return null; // not cached, so the next open tries again
+  }
+}
+
+function bindCatDetails(root) {
+  $$('[data-cfd]', root).forEach(d => d.ontoggle = async () => {
+    const code = d.dataset.cfd;
+    if (!d.open) { catDetailsOpen.delete(code); return; }
+    catDetailsOpen.add(code);
+    if (catDetailsCache[code] || catDetailsLoading.has(code)) return;
+    catDetailsLoading.add(code);
+    const html = await loadCatDetails(code);
+    catDetailsLoading.delete(code);
+    if (html) catDetailsCache[code] = html;
+    // The catalog may have re-rendered meanwhile: fill whichever element shows this course now.
+    const box = $(`[data-cfd="${CSS.escape(code)}"] .ci-body`);
+    if (box) box.innerHTML = html || '<p class="bad-t">לא הצלחתי לטעון מ-CheeseFork. סגור ופתח שוב כדי לנסות שוב.</p>';
+  });
+  const list = $('.cat-list', root);
+  if (list) list.onclick = e => {
+    const b = e.target.closest('[data-cmpcode]');
+    if (b) openComparator(b.dataset.cmpcode);
+  };
 }
 
 function addToPlan(code, sem) {
@@ -304,6 +349,7 @@ function renderPlanner(root) {
   $$('[data-addcat]', root).forEach(b => b.onclick = () => addToPlan(b.dataset.addcat));
   $$('[data-addsem]', root).forEach(b => b.onclick = () => { catFilter = 'all'; plannerTab = 'catalog'; render(); toast(`בחר קורס – הוא ייכנס לסמסטר לבחירתך`); });
   $$('[data-cat]', root).forEach(b => b.onclick = () => { catFilter = b.dataset.cat; render(); });
+  bindCatDetails(root);
   const search = $('#catSearch', root);
   if (search) search.oninput = () => { catQuery = search.value; const pos = search.selectionStart; render(); const s2 = $('#catSearch'); s2.focus(); s2.setSelectionRange(pos, pos); };
   const open = $('#catOpen', root);
