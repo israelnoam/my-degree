@@ -472,7 +472,7 @@ function cvHtml(cv, template = 'classic') {
   const lang = cv.lang === 'en' ? 'en' : 'he';
   const L = CV_LABELS[lang];
   const sec = (title, body) => body ? `<section class="cvs"><h2>${esc(title)}</h2>${body}</section>` : '';
-  return `<div class="cv-page t-${esc(template)}" dir="${lang === 'en' ? 'ltr' : 'rtl'}" lang="${lang}">
+  return `<div class="cv-page t-${esc(template)}" translate="no" dir="${lang === 'en' ? 'ltr' : 'rtl'}" lang="${lang}">
     <header class="cvh">
       <h1 dir="auto">${esc(cv.basics.name || (lang === 'en' ? 'Your Name' : 'השם שלך'))}</h1>
       ${cv.basics.label ? `<div class="cv-label" dir="auto">${esc(cv.basics.label)}</div>` : ''}
@@ -640,7 +640,7 @@ function targetView(p, targets) {
           <button class="btn danger" id="tDel">מחק</button>
         </div>
         ${cv ? `<div class="cv-analysis">
-          <h3>${cv.source === 'ai' ? '🤖 הותאם עם AI' : '🔑 הותאם לפי מילות מפתח'} <small class="muted">${t.tailoredAt ? new Date(t.tailoredAt).toLocaleString('he-IL') : ''}</small></h3>
+          <h3>${cv.source === 'ai' ? '🤖 הותאם עם AI' : '🔑 הותאם לפי מילות מפתח'} <small class="muted">${t.tailoredAt ? new Date(t.tailoredAt).toLocaleString(LOCALE) : ''}</small></h3>
           ${cv.matched?.length ? `<p><b>מכוסה:</b> ${cv.matched.map(k => `<span class="chip ok">${esc(k)}</span>`).join(' ')}</p>` : ''}
           ${cv.missing?.length ? `<p><b>חסר:</b> ${cv.missing.map(k => `<span class="chip miss">${esc(k)}</span>`).join(' ')}</p>` : ''}
           ${cv.notes?.length ? `<ul class="cv-notes">${cv.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}

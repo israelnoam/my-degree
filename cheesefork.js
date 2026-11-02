@@ -132,14 +132,36 @@ function doneCode8Check() {
   return code8 => done.has(code8);
 }
 
+// A course's name from anything the app knows: your plan, the curriculum and electives, or any
+// CheeseFork semester loaded. Old-program courses that haven't been offered lately have none.
+function courseNameFor(code8) {
+  const short = oldCourseCode(code8);
+  return courseByCode(appCodeFor(code8))?.name
+    || courses().find(c => toCode8(c.code) === code8)?.name
+    || ELECTIVE_BY_CODE[short]?.name
+    || SEED_COURSES.find(s => s[1] === short)?.[2]
+    || CF.find(code8)?.course.general['שם מקצוע']
+    || '';
+}
+
 function prereqHtml(expr) {
   if (!expr) return '<span class="muted">אין</span>';
   const check = doneCode8Check();
-  return esc(expr).replace(/\d{8}/g, code8 => {
-    const app = appCodeFor(code8);
-    const name = courseByCode(app)?.name || CF.find(code8)?.course.general['שם מקצוע'] || code8;
-    return `<span class="pq ${check(code8) ? 'ok' : ''}" title="${code8}">${esc(name)}</span>`;
-  }).replace(/ ו-/g, ' + ');
+  // "and"/"or" are formatted first, so a course name that contains "או" is left alone.
+  return esc(expr).replace(/ ו-/g, ' + ').replace(/ או /g, ' <b>או</b> ').replace(/\d{8}/g, code8 => {
+    const name = courseNameFor(code8), short = oldCourseCode(code8);
+    return name
+      ? `<span class="pq ${check(code8) ? 'ok' : ''}" title="${code8}">${esc(name)} <small>${short}</small></span>`
+      : `<a class="pq unknown ${check(code8) ? 'ok' : ''}" href="https://students.technion.ac.il/local/technionsearch/course/${code8}" target="_blank" rel="noopener" title="הקורס לא נפתח בסמסטרים האחרונים, אז אין לו שם ב-CheeseFork. לחץ כדי לראות אותו בקטלוג של הטכניון">${short} <small>לא נפתח לאחרונה ↗</small></a>`;
+  });
+}
+
+// The same expression as plain text with names (for the AI advisor).
+function prereqText(expr) {
+  return String(expr || '').replace(/\d{8}/g, code8 => {
+    const name = courseNameFor(code8), short = oldCourseCode(code8);
+    return name ? `${name} (${short})` : `${short} (לא נפתח בסמסטרים האחרונים, שם לא ידוע)`;
+  });
 }
 
 // Course-card section; fills itself in once the data arrives.
@@ -169,7 +191,7 @@ async function fillCheeseFork(form, code) {
     <div class="field"><span class="field-label">דרישות קדם (מהטכניון)</span><div class="pq-line">${prereqHtml(g['מקצועות קדם'])}</div></div>
     ${g['מקצועות צמודים'] ? `<div class="field"><span class="field-label">מקצועות צמודים</span><div class="pq-line">${prereqHtml(g['מקצועות צמודים'])}</div></div>` : ''}
     ${g['אחראים'] ? `<p class="muted">אחראי: ${esc(g['אחראים'])}</p>` : ''}
-    ${g['סילבוס'] ? `<details open><summary>📖 סילבוס</summary><p class="cf-syl">${esc(g['סילבוס'])}</p></details>` : ''}
+    ${g['סילבוס'] ? `<details open><summary>📖 סילבוס</summary><p class="cf-syl" translate="no">${esc(g['סילבוס'])}</p></details>` : ''}
     ${Object.keys(groups).length ? `<details><summary>קבוצות ושעות (${Object.keys(groups).length})</summary><div class="cf-groups">
       ${Object.entries(groups).map(([name, rows]) => `<div class="cf-group">
         <div><b>${esc(name)}</b> · ${rows.map(r => `${esc(r['יום'])} <span dir="ltr">${esc(r['שעה'])}</span>${r['בניין'] ? ` · ${esc(r['בניין'])} ${esc(r['חדר'] || '')}` : ''}`).join(' | ')}

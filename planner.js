@@ -116,7 +116,7 @@ function planChip(c) {
   const warn = !isComplete(c) && rec && c.sem && c.sem !== rec ? `<small class="rec">מומלץ בסמסטר ${rec}</small>` : '';
   const grade = c.status === 'done' && c.grade != null ? `<span class="grade">${c.grade}</span>` : c.status === 'binary' ? '<span class="grade bin">עובר</span>' : '';
   return `<button class="pchip ${st}" data-code="${esc(c.code)}">
-    <span class="pc-name">${esc(c.name)}</span>
+    <span class="pc-name" translate="no">${esc(c.name)}</span>
     <span class="pc-meta">${badge}${fmt(c.credits)} נק״ז ${grade}</span>${warn}
   </button>`;
 }
@@ -151,7 +151,7 @@ function catalogHtml() {
     <div class="cat-list">${items.map(i => `
       <div class="cat-item ${i.planned ? 'planned' : ''}">
         <div class="ci-main">
-          <b>${esc(i.name)}</b>
+          <b translate="no">${esc(i.name)}</b>
           <small class="muted">${esc(i.code)} · ${fmt(i.credits)} נק״ז · <span class="lbadge" style="--lc:${LISTS[i.list].color}">${LISTS[i.list].short}</span>
             ${i.offered.length ? ` · נפתח: ${i.offered.sort().map(cfKeyLabel).join(', ')}` : cfLoaded ? ' · לא נפתח לאחרונה' : ''}
             ${i.prereqOk === true ? ' · <span class="ok-t">✓ דרישות קדם</span>' : i.prereqOk === false ? ' · <span class="bad-t">חסרות דרישות קדם</span>' : ''}</small>
@@ -181,7 +181,7 @@ async function loadCatDetails(code) {
       <dt>אחראים</dt><dd>${CF_FACTS.staff(g)}</dd>
       <dt>קבוצות</dt><dd>${CF_FACTS.groups(cfGroups(crs))}</dd>
     </dl>
-    <p class="ci-syl"><b>סילבוס:</b> ${CF_FACTS.syllabus(g)}</p>
+    <p class="ci-syl"><b>סילבוס:</b> <span translate="no">${CF_FACTS.syllabus(g)}</span></p>
     <div class="row wrap"><button type="button" class="btn small" data-cmpcode="${esc(code)}">⚖️ השווה לקורסים אחרים</button>${askAdvisorBtn(code)}</div>`;
   } catch (e) {
     return null; // not cached, so the next open tries again
@@ -343,7 +343,7 @@ function renderPlanner(root) {
     <section class="panel">
       ${plannerTab === 'plan' ? semesterColumns()
         : plannerTab === 'catalog' ? catalogHtml()
-        : plannerTab === 'opps' ? `<div class="opps">${opportunitiesHtml()}</div>`
+        : plannerTab === 'opps' ? `${radarHtml()}<h2 class="opps-title">🎓 תוכניות ומסלולים</h2><div class="opps">${opportunitiesHtml()}</div>`
         : reserveHtml()}
     </section>`;
 
@@ -353,6 +353,7 @@ function renderPlanner(root) {
   $$('[data-addsem]', root).forEach(b => b.onclick = () => { catFilter = 'all'; plannerTab = 'catalog'; render(); toast(`בחר קורס – הוא ייכנס לסמסטר לבחירתך`); });
   $$('[data-cat]', root).forEach(b => b.onclick = () => { catFilter = b.dataset.cat; render(); });
   bindCatDetails(root);
+  if (plannerTab === 'opps') bindRadar(root);
   const search = $('#catSearch', root);
   if (search) search.oninput = () => { catQuery = search.value; const pos = search.selectionStart; render(); const s2 = $('#catSearch'); s2.focus(); s2.setSelectionRange(pos, pos); };
   const open = $('#catOpen', root);

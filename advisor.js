@@ -33,7 +33,7 @@ function advisorContext() {
   const inPlan = new Set(courses().map(c => c.code));
   const soon = tasksWithin(30);
   const groups = settings().reserve || {};
-  return `היום: ${new Date().toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}. הסמסטר הנוכחי בתוכנית: ${currentSemesterNumber()} (${semName(currentSemesterNumber())}).
+  return `היום: ${new Date().toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}. הסמסטר הנוכחי בתוכנית: ${currentSemesterNumber()} (${semName(currentSemesterNumber())}).
 
 ## מצב כללי
 ממוצע משוקלל: ${s.gpa === null ? 'אין עדיין' : fmt(s.gpa, 2)} · נק״ז שהושלמו: ${fmt(s.doneCredits)} מתוך ${fmt(s.total)} · קורסים שהושלמו: ${s.doneCount} · נק״ז בלימוד עכשיו: ${fmt(s.activeCredits)}
@@ -84,8 +84,8 @@ async function advisorCourseFacts(question) {
     if (!g) { out.push(`### ${name} (${code})\nאין נתוני CheeseFork.`); continue; }
     const groups = cfGroups(crs);
     out.push(`### ${name} (${code})
-דרישות קדם: ${g['מקצועות קדם'] || 'אין'}${g['מקצועות קדם'] ? ` (${evalPrereqs(g['מקצועות קדם'], doneCode8Check()).ok ? 'מולאו' : 'חסרות'})` : ''}
-מקצועות צמודים: ${g['מקצועות צמודים'] || 'אין'}
+דרישות קדם: ${g['מקצועות קדם'] ? prereqText(g['מקצועות קדם']) : 'אין'}${g['מקצועות קדם'] ? ` (${evalPrereqs(g['מקצועות קדם'], doneCode8Check()).ok ? 'מולאו' : 'חסרות'})` : ''}
+מקצועות צמודים: ${g['מקצועות צמודים'] ? prereqText(g['מקצועות צמודים']) : 'אין'}
 מועד א׳: ${g['מועד א'] || '—'} · מועד ב׳: ${g['מועד ב'] || '—'}
 אחראים: ${g['אחראים'] || '—'}
 נפתח בסמסטרים: ${CF.offeredIn(code).sort().map(cfKeyLabel).join(', ') || 'לא נמצא'}
@@ -145,7 +145,7 @@ function drawAdvisor() {
       ${advisorMsgs.length ? '<button class="btn small" type="button" id="advClear">🗑️ שיחה חדשה</button>' : ''}
       <button class="btn small" type="button" id="advClose" aria-label="סגור">✕</button></div>
     ${has ? `
-      <div class="adv-log" id="advLog">${advisorMsgs.length ? advisorMsgs.map(m => `<div class="adv-msg ${m.role}">${m.role === 'user' ? esc(m.content).replace(/\n/g, '<br>') : advisorMd(m.content)}</div>`).join('')
+      <div class="adv-log" id="advLog">${advisorMsgs.length ? advisorMsgs.map(m => `<div class="adv-msg ${m.role}" translate="no">${m.role === 'user' ? esc(m.content).replace(/\n/g, '<br>') : advisorMd(m.content)}</div>`).join('')
         : `<div class="adv-intro"><p>שאל אותי על התואר שלך: מה לקחת בהמשך, אם אתה בקצב, מה יקרה לממוצע אם…, דרישות וזכויות מילואים. אני רואה את התוכנית, הציונים, המשימות ונתוני CheeseFork.</p>
           <div class="chips">${ADVISOR_SUGGESTIONS.map(s => `<button type="button" class="chip" data-advq="${esc(s)}">${esc(s)}</button>`).join('')}</div></div>`}</div>
       <form class="adv-form" id="advForm">
@@ -186,7 +186,8 @@ async function askAdvisor(question) {
   bubble.innerHTML = '<span class="muted">חושב…</span>';
   const log = $('#advLog', advisorDlg);
   try {
-    const system = `${ADVISOR_SYSTEM}\n\n# הנתונים שלי\n${advisorContext()}${await advisorCourseFacts(question)}`;
+    const english = LANG === 'en' ? '\n\nThe student uses the app in English: answer in English (official course names may stay in Hebrew).' : '';
+    const system = `${ADVISOR_SYSTEM}${english}\n\n# הנתונים שלי\n${advisorContext()}${await advisorCourseFacts(question)}`;
     const client = await claudeClient();
     const stream = client.beta.messages.stream({
       model: CV_MODEL,

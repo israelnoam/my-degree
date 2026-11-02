@@ -389,6 +389,10 @@ function digestHtml(x = digestData()) {
     ${x.due.length ? x.due.map(t => `<div class="notif-row ${dueText(t).overdue ? 'late' : ''}" data-task="${esc(t.id)}"><span class="grow">${(TASK_TYPES[t.type] || TASK_TYPES.other).icon} ${esc(t.title)}${t.course ? ` <small class="muted">${esc(courseLabel(t.course))}</small>` : ''}</span><small>${dueText(t).rel}</small></div>`).join('') : '<p class="muted">אין הגשות השבוע 🎉</p>'}
     <h4>🎯 מבחנים בשבועיים הקרובים</h4>
     ${x.exams.length ? x.exams.map(e => `<div class="notif-row"><b>${fmtDate(e.date)}</b><span class="grow">${esc(e.name)}</span><small>${when(e.date)}</small></div>`).join('') : '<p class="muted">אין מבחנים בשבועיים הקרובים.</p>'}
+    ${(() => {
+      const fresh = typeof radarItems === 'function' ? radarItems().filter(r => Date.now() - (r.found || 0) < 7 * MS_DAY) : [];
+      return fresh.length ? `<h4>🛰️ הזדמנויות חדשות השבוע</h4>${fresh.map(r => `<div class="notif-row" data-radar="1"><span class="grow">${(RADAR_KINDS[r.kind] || RADAR_KINDS.other).icon} ${esc(r.title)}</span><small class="muted">${esc(RADAR_KINDS[r.kind]?.label || '')}</small></div>`).join('')}` : '';
+    })()}
     <h4>📭 קורסים שהסמסטר שלהם נגמר ואין להם ציון</h4>
     ${x.noGrade.length ? x.noGrade.map(c => `<div class="notif-row" data-course="${esc(c.code)}"><span class="grow">${esc(c.name)}</span><small class="muted">${esc(semName(c.sem))}</small></div>`).join('') : '<p class="muted">כל הקורסים מסמסטרים קודמים מעודכנים ✓</p>'}
   </div>`;
@@ -443,6 +447,7 @@ async function openNotifications() {
     ${closeBtn}`, form => {
     $$('[data-task]', form).forEach(r => r.onclick = () => { $('#modal').close(); setTimeout(() => editTask(r.dataset.task), 30); });
     $$('[data-course]', form).forEach(r => r.onclick = () => { $('#modal').close(); setTimeout(() => editCourse(r.dataset.course), 30); });
+    $$('[data-radar]', form).forEach(r => r.onclick = () => { $('#modal').close(); plannerTab = 'opps'; go('planner'); });
     $('#notifToggle', form).onchange = async e => {
       if (e.target.checked) {
         const p = await Notification.requestPermission();

@@ -166,8 +166,8 @@ function renderSyncBtn(state) {
   let label = SYNC_LABELS[state] || state;
   if (state === 'ok' && Sync.lastSync) {
     const d = new Date(Sync.lastSync);
-    const time = d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
-    label = ymd(d) === ymd(new Date()) ? `סונכרן ${time}` : `סונכרן ${d.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })}`;
+    const time = d.toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' });
+    label = ymd(d) === ymd(new Date()) ? `סונכרן ${time}` : `סונכרן ${d.toLocaleDateString(LOCALE, { day: 'numeric', month: 'numeric' })}`;
   }
   $('.label', b).textContent = label;
   b.title = Sync.message || 'סנכרון אוטומטי פעם ביום · לחץ לסנכרן עכשיו';
@@ -221,7 +221,7 @@ function googleBar(kind) {
   const when = kind === 'tasks' ? Sync.lastSync : GCal.fetchedAt[ymd(ttWeek)];
   const ok = kind === 'tasks' ? !Sync.hookError : !GCal.lastError;
   const status = busy ? 'מסנכרן…' : !ok ? 'יש בעיה (פרטים למטה)'
-    : when ? `מסונכרן · ${new Date(when).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}` : 'מתחבר…';
+    : when ? `מסונכרן · ${new Date(when).toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' })}` : 'מתחבר…';
   return `<div class="gbar ${ok ? 'ok' : 'bad'}"><span>${icon} ${name}: <b>${status}</b></span>
     <span class="row">${open}<button class="btn" data-gbar="sync" ${busy ? 'disabled' : ''}>🔄 ${kind === 'tasks' ? 'סנכרן' : 'רענן'}</button></span></div>`;
 }
@@ -310,8 +310,7 @@ function renderMap(root) {
 
   root.innerHTML = `
     ${connectCard()}
-    <div class="map-layout">
-      <section class="panel map-panel">
+    <section class="panel map-panel">
         <div class="toolbar">
           <div class="legend">
             ${['locked', 'open', 'active', 'done'].map(k => `<span class="lg ${k}"><i></i>${STATUS[k].label}</span>`).join('')}
@@ -323,9 +322,7 @@ function renderMap(root) {
         </div>
         <p class="hint">הקווים מחברים כל קורס לדרישות הקדם שלו. לחץ על קורס לפרטים, ציון ו-CheeseFork; מעבר עכבר מדגיש את השרשרת.</p>
         <div class="semesters"><svg class="pq-lines" aria-hidden="true"></svg>${rows.join('')}</div>
-      </section>
-      <aside class="panel side-panel">${upcomingPanel()}</aside>
-    </div>`;
+    </section>`;
 
   $('#addCourse').onclick = () => editCourse(null);
   $('#gradeSheetBtn').onclick = () => $('#gradeFile').click();
@@ -335,7 +332,6 @@ function renderMap(root) {
     el.onmouseenter = () => highlightChain(el.dataset.code, true);
     el.onmouseleave = () => highlightChain(el.dataset.code, false);
   });
-  bindTaskList(root);
   drawPrereqLines();
   if (!renderMap.observer) {
     renderMap.observer = new ResizeObserver(() => { if (currentView === 'map') drawPrereqLines(); });
@@ -396,7 +392,7 @@ function courseCard(c) {
   const badge = LISTS[cat] ? `<span class="lbadge" style="--lc:${LISTS[cat].color}">${LISTS[cat].short}</span>` : '';
   return `
     <button class="course ${st}" data-code="${esc(c.code)}" type="button">
-      <span class="c-name">${esc(c.name)}</span>
+      <span class="c-name" translate="no">${esc(c.name)}</span>
       <span class="c-meta">${badge}${esc(c.code)} · ${fmt(c.credits)} נק״ז</span>
       <span class="c-status">${STATUS[st].icon} ${STATUS[st].label}${grade}</span>
     </button>`;
@@ -540,8 +536,8 @@ function dueText(t) {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const dueDay = new Date(due); dueDay.setHours(0, 0, 0, 0);
   const days = Math.round((dueDay - today) / 86_400_000);
-  const dateStr = due.toLocaleDateString('he-IL', { weekday: 'short', day: 'numeric', month: 'numeric' }) +
-    (t.due.length > 10 ? ' ' + due.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '');
+  const dateStr = due.toLocaleDateString(LOCALE, { weekday: 'short', day: 'numeric', month: 'numeric' }) +
+    (t.due.length > 10 ? ' ' + due.toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' }) : '');
   let rel = '';
   if (!t.done) {
     if (due < Date.now()) rel = 'עבר המועד';
@@ -593,28 +589,6 @@ function taskBuckets() {
 function tasksWithin(days) {
   const end = new Date(); end.setHours(0, 0, 0, 0); end.setDate(end.getDate() + days + 1);
   return tasks().filter(t => !t.done && t.due && new Date(t.due.length === 10 ? t.due + 'T00:00' : t.due) < end);
-}
-
-// The coming week, overdue first (tasks() is sorted by due date), each flagged by taskItem.
-function weekTasksPanel() {
-  const week = tasksWithin(7);
-  const late = week.filter(t => dueText(t).overdue).length;
-  return `
-    <h3 class="open-head"><span>📅 משימות לשבוע הקרוב</span><button class="link-btn" data-go="tasks" data-filter="week" title="למשימות השבוע">${week.length} ←</button></h3>
-    ${late ? `<p class="bucket-title overdue">🔴 ${late} באיחור</p>` : ''}
-    ${week.length ? `<ul class="task-list compact">${week.map(taskItem).join('')}</ul>` : '<p class="muted">אין משימות בשבוע הקרוב 🎉</p>'}`;
-}
-
-function upcomingPanel() {
-  const weekIds = new Set(tasksWithin(7).map(t => t.id));
-  const up = tasksWithin(14).filter(t => !weekIds.has(t.id));
-  const active = courses().filter(c => c.status === 'active');
-  return `
-    ${weekTasksPanel()}
-    <h3>⏰ בשבוע שאחריו</h3>
-    ${up.length ? `<ul class="task-list compact">${up.map(taskItem).join('')}</ul>` : '<p class="muted">אין משימות 🎉</p>'}
-    <h3>📖 בלימוד עכשיו</h3>
-    ${active.length ? `<div class="chips">${active.map(c => `<span class="chip">${esc(c.name)}</span>`).join('')}</div>` : '<p class="muted">סמן קורסים כ"בלימוד" כדי לראות אותם כאן.</p>'}`;
 }
 
 // The "open" and "week" views, grouped: overdue, today, later, no date (filters still apply).
@@ -903,11 +877,11 @@ function renderTimetable(root) {
 
 function showEvent(ev) {
   if (!ev) return;
-  const fmtT = s => new Date(s).toLocaleString('he-IL', { weekday: 'long', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const fmtT = s => new Date(s).toLocaleString(LOCALE, { weekday: 'long', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' });
   openModal(`
     <h2>${esc(ev.title)}</h2>
     <p class="muted"><span class="ev-dot" style="--ev:${esc(ev.color)}"></span> ${esc(ev.calendar)}</p>
-    <p>${ev.allDay ? 'כל היום' : `${fmtT(ev.start)} – ${new Date(ev.end).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`}</p>
+    <p>${ev.allDay ? 'כל היום' : `${fmtT(ev.start)} – ${new Date(ev.end).toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' })}`}</p>
     ${ev.location ? `<p>📍 ${esc(ev.location)}</p>` : ''}
     ${ev.description ? `<p class="ev-desc">${esc(ev.description.replace(/<[^>]+>/g, ' '))}</p>` : ''}
     <div class="actions">
@@ -1123,7 +1097,7 @@ function bindGoogleSection(root) {
 }
 
 function renderSettings(root) {
-  const last = Sync.lastSync ? new Date(Sync.lastSync).toLocaleString('he-IL') : 'אף פעם';
+  const last = Sync.lastSync ? new Date(Sync.lastSync).toLocaleString(LOCALE) : 'אף פעם';
   const st = settings();
   const isHttps = location.protocol === 'https:' || location.hostname === 'localhost';
   root.innerHTML = `
@@ -1167,6 +1141,15 @@ function renderSettings(root) {
         <label>סה״כ נק״ז לתואר<input id="totalCredits" type="number" step="0.5" value="${esc(st.totalCredits)}"></label>
         <label>מספר סמסטרים<input id="nSem" type="number" min="1" max="12" value="${esc(st.semesters)}"></label>
       </div>
+    </section>
+
+    <section class="panel narrow">
+      <h2>🎨 מראה ושפה</h2>
+      <div class="field"><span class="field-label">ערכת צבעים</span>
+        <div class="seg">${[['dark', '🌙 כהה'], ['light', '☀️ בהיר'], ['auto', '🖥️ לפי המכשיר']].map(([v, l]) => `<button type="button" data-theme-pick="${v}" class="${themePref() === v ? 'on' : ''}">${l}</button>`).join('')}</div></div>
+      <div class="field"><span class="field-label">שפה · Language</span>
+        <div class="seg">${[['he', 'עברית'], ['en', 'English']].map(([v, l]) => `<button type="button" data-lang-pick="${v}" class="${LANG === v ? 'on' : ''}">${l}</button>`).join('')}</div></div>
+      <p class="muted">נשמר במכשיר הזה. נתונים רשמיים מהטכניון (שמות קורסים, סילבוסים) נשארים בעברית.</p>
     </section>
 
     <section class="panel narrow">
@@ -1218,6 +1201,8 @@ function renderSettings(root) {
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   };
   $('#importBtn').onclick = () => $('#importFile').click();
+  $$('[data-theme-pick]', root).forEach(b => b.onclick = () => { setTheme(b.dataset.themePick); render(); });
+  $$('[data-lang-pick]', root).forEach(b => b.onclick = () => { if (b.dataset.langPick !== LANG) setLang(b.dataset.langPick); });
   $('#setTour').onclick = () => startTour();
   $('#setFaq').onclick = () => openFaq();
   $('#setAdvisor').onclick = () => openAdvisor();

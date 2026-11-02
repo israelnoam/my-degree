@@ -230,7 +230,8 @@ const OPPORTUNITIES = [
     id: 'robotics', icon: '🤖', title: 'התמחות משנה ברובוטיקה (בין-פקולטית)',
     text: 'תעודה טכניונית נוספת, 27 נק״ז מעבר לחובה. סף כניסה: ממוצע מצטבר 87.0 ולפחות 60 נק״ז. רשימות: קדם (בקרה), מבוא לרובוטיקה, למידה ובינה מלאכותית, מעבדה מעשית, ו-4 קורסי ליבה ברובוטיקה.',
     eligibility: { gpa: 87, credits: 60 },
-    links: [],
+    // No web page of its own: the details are in the faculty's program booklet.
+    links: [['לעמוד התוכנית', 'https://meeng.technion.ac.il/wp-content/uploads/2025/07/mechanichal-engineering-2025-2026.pdf#page=4']],
   },
 ];
 
