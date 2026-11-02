@@ -73,6 +73,7 @@ code { background: var(--bg); padding: 2px 6px; border-radius: 6px; font-size: .
   padding: 7px 14px; cursor: pointer; font-size: .85rem;
 }
 .sync-btn:hover { border-color: var(--blue); }
+.sync-btn .ico { display: none; }
 .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--locked); flex: none; }
 [data-state="ok"] .dot { background: var(--green); box-shadow: 0 0 8px var(--green); }
 [data-state="syncing"] .dot { background: var(--blue); animation: pulse 1s infinite; }
@@ -316,12 +317,22 @@ dialog h2 { margin-bottom: 14px; }
 }
 
 @media (max-width: 760px) {
-  .topbar { padding: 10px 16px; gap: 10px; flex-wrap: wrap; }
+  /* Two compact rows: logo, buttons and sync icon; then the stats. */
+  .topbar { padding: 6px 12px; gap: 6px; flex-wrap: wrap; }
+  .brand img { width: 28px; height: 28px; }
   .brand span { display: none; }
-  .stats { order: 3; flex-basis: 100%; justify-content: stretch; }
-  .stat { flex: 1; min-width: 0; padding: 5px 8px; }
-  .stat.progress { flex: 2.4; min-width: 0; }
-  .sync-btn { margin-inline-start: auto; }
+  .stats { order: 3; flex-basis: 100%; justify-content: stretch; gap: 6px; }
+  .stat { flex: 1; min-width: 0; padding: 3px 6px; border-radius: 10px; }
+  .stat b { font-size: 1rem; line-height: 1.2; }
+  .stat small { font-size: .68rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .stat.progress { flex: 2.4; min-width: 0; gap: 2px; }
+  .bar { height: 6px; }
+  .hbtn { padding: 6px 8px; }
+  /* Sync shrinks to a cloud with a status dot; the label stays in the title and aria-label. */
+  .sync-btn { margin-inline-start: auto; position: relative; padding: 6px 9px; }
+  .sync-btn .label { display: none; }
+  .sync-btn .ico { display: inline; font-size: 1rem; line-height: 1; }
+  .sync-btn .dot { position: absolute; bottom: 3px; inset-inline-end: 4px; width: 8px; height: 8px; border: 1.5px solid var(--panel); }
 
   /* bottom navigation on phones */
   .tabs {

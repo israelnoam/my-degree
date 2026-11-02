@@ -158,8 +158,11 @@ function catalogHtml() {
           <details class="ci-details" data-cfd="${esc(i.code)}" ${catDetailsOpen.has(i.code) ? 'open' : ''}><summary>ℹ️ פרטים, סילבוס ומועדים</summary>
             <div class="ci-body">${catDetailsCache[i.code] || '<p class="muted">טוען מ-CheeseFork…</p>'}</div></details>
         </div>
-        ${i.planned ? `<button class="btn small" data-code="${esc(i.code)}">${i.course?.sem ? `סמסטר ${i.course.sem}` : 'בתוכנית'}</button>`
-          : `<button class="btn small primary" data-addcat="${esc(i.code)}">＋ לתוכנית</button>`}
+        <div class="ci-actions">
+          <button type="button" class="btn small" data-askadv="${esc(i.code)}" title="שאל את יועץ התואר על הקורס" aria-label="שאל את יועץ התואר על הקורס">🤖</button>
+          ${i.planned ? `<button class="btn small" data-code="${esc(i.code)}">${i.course?.sem ? `סמסטר ${i.course.sem}` : 'בתוכנית'}</button>`
+            : `<button class="btn small primary" data-addcat="${esc(i.code)}">＋ לתוכנית</button>`}
+        </div>
       </div>`).join('') || '<p class="empty">לא נמצאו קורסים.</p>'}</div>`;
 }
 
@@ -179,7 +182,7 @@ async function loadCatDetails(code) {
       <dt>קבוצות</dt><dd>${CF_FACTS.groups(cfGroups(crs))}</dd>
     </dl>
     <p class="ci-syl"><b>סילבוס:</b> ${CF_FACTS.syllabus(g)}</p>
-    <button type="button" class="btn small" data-cmpcode="${esc(code)}">⚖️ השווה לקורסים אחרים</button>`;
+    <div class="row wrap"><button type="button" class="btn small" data-cmpcode="${esc(code)}">⚖️ השווה לקורסים אחרים</button>${askAdvisorBtn(code)}</div>`;
   } catch (e) {
     return null; // not cached, so the next open tries again
   }

@@ -138,17 +138,22 @@ function renderStats() {
     <div class="stat hide-sm"><b>${s.doneCount}</b><small>קורסים הושלמו</small></div>
     <div class="stat hide-sm"><b>${fmt(s.activeCredits)}</b><small>נק״ז בלימוד</small></div>
     ${openTasksStat()}`;
-  $('#openTasksStat')?.addEventListener('click', e => { e.stopPropagation(); taskFilter = 'open'; go('tasks'); });
+  const stat = $('#openTasksStat');
+  if (stat) {
+    const open = e => { e.stopPropagation(); taskFilter = 'week'; go('tasks'); };
+    stat.onclick = open;
+    stat.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(e); } };
+  }
 }
 
-// Header bullet for open tasks; overdue/today counts show underneath.
+// Header bullet: open tasks for the coming week (overdue included); overdue/today counts show underneath.
 function openTasksStat() {
   const b = taskBuckets();
-  const open = b.overdue.length + b.today.length + b.later.length + b.undated.length;
+  const week = tasksWithin(7).length;
   const sub = [b.overdue.length ? `<em class="late">${b.overdue.length} באיחור</em>` : '', b.today.length ? `<em>${b.today.length} להיום</em>` : '']
-    .filter(Boolean).join(' · ') || 'משימות פתוחות';
-  return `<div class="stat tasks-stat ${b.overdue.length ? 'has-late' : ''}" id="openTasksStat" role="button" tabindex="0" title="משימות פתוחות">
-    <b>${open}</b><small>${sub}</small></div>`;
+    .filter(Boolean).join(' · ') || 'לשבוע הקרוב';
+  return `<div class="stat tasks-stat ${b.overdue.length ? 'has-late' : ''}" id="openTasksStat" role="button" tabindex="0" title="משימות לשבוע הקרוב (כולל באיחור)">
+    <b>${week}</b><small>${sub}</small></div>`;
 }
 
 const SYNC_LABELS = {
@@ -166,6 +171,8 @@ function renderSyncBtn(state) {
   }
   $('.label', b).textContent = label;
   b.title = Sync.message || 'סנכרון אוטומטי פעם ביום · לחץ לסנכרן עכשיו';
+  // On phones only the icon shows, so the state is spoken too.
+  b.setAttribute('aria-label', `סנכרון עם Google: ${label}`);
 }
 $('#syncBtn').addEventListener('click', () => {
   if (!Sync.clientId) return go('settings');
@@ -254,7 +261,7 @@ $('#tabs').addEventListener('click', e => {
 // Any [data-go="view"] button switches tabs (e.g. "open tasks" in the side panel).
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-go]');
-  if (b) { if (b.dataset.go === 'tasks') taskFilter = 'open'; go(b.dataset.go); }
+  if (b) { if (b.dataset.go === 'tasks') taskFilter = b.dataset.filter || 'open'; go(b.dataset.go); }
 });
 
 function render() {
@@ -592,9 +599,8 @@ function tasksWithin(days) {
 function weekTasksPanel() {
   const week = tasksWithin(7);
   const late = week.filter(t => dueText(t).overdue).length;
-  const open = tasks().filter(t => !t.done).length;
   return `
-    <h3 class="open-head"><span>📅 משימות לשבוע הקרוב</span><button class="link-btn" data-go="tasks" title="לכל המשימות הפתוחות">${open} פתוחות ←</button></h3>
+    <h3 class="open-head"><span>📅 משימות לשבוע הקרוב</span><button class="link-btn" data-go="tasks" data-filter="week" title="למשימות השבוע">${week.length} ←</button></h3>
     ${late ? `<p class="bucket-title overdue">🔴 ${late} באיחור</p>` : ''}
     ${week.length ? `<ul class="task-list compact">${week.map(taskItem).join('')}</ul>` : '<p class="muted">אין משימות בשבוע הקרוב 🎉</p>'}`;
 }
@@ -611,14 +617,14 @@ function upcomingPanel() {
     ${active.length ? `<div class="chips">${active.map(c => `<span class="chip">${esc(c.name)}</span>`).join('')}</div>` : '<p class="muted">סמן קורסים כ"בלימוד" כדי לראות אותם כאן.</p>'}`;
 }
 
-// The "open" view, grouped: overdue, today, later, no date (filters still apply).
-function groupedOpenTasks(list) {
+// The "open" and "week" views, grouped: overdue, today, later, no date (filters still apply).
+function groupedOpenTasks(list, week = false) {
   const ids = new Set(list.map(t => t.id));
   const b = taskBuckets();
-  const groups = [['overdue', '🔴 משימות באיחור'], ['today', '📅 משימות להיום'], ['later', '🗓️ בהמשך'], ['undated', '📌 בלי תאריך']]
+  const groups = [['overdue', '🔴 משימות באיחור'], ['today', '📅 משימות להיום'], ['later', week ? '🗓️ בהמשך השבוע' : '🗓️ בהמשך'], ['undated', '📌 בלי תאריך']]
     .map(([k, title]) => [k, title, b[k].filter(t => ids.has(t.id))])
     .filter(([, , items]) => items.length);
-  if (!groups.length) return '<p class="empty">אין משימות פתוחות 🎉</p>';
+  if (!groups.length) return `<p class="empty">${week ? 'אין משימות בשבוע הקרוב' : 'אין משימות פתוחות'} 🎉</p>`;
   return groups.map(([k, title, items]) => `
     <h3 class="bucket-title ${k}">${title} <span class="count">${items.length}</span></h3>
     <ul class="task-list">${items.map(taskItem).join('')}</ul>`).join('');
@@ -628,6 +634,7 @@ let taskFilter = 'open', taskType = 'all', taskCourse = 'all';
 function renderTasks(root) {
   let list = tasks();
   if (taskFilter === 'open') list = list.filter(t => !t.done);
+  if (taskFilter === 'week') { const ids = new Set(tasksWithin(7).map(t => t.id)); list = list.filter(t => ids.has(t.id)); }
   if (taskFilter === 'done') list = list.filter(t => t.done);
   if (taskType !== 'all') list = list.filter(t => t.type === taskType);
   if (taskCourse !== 'all') list = list.filter(t => t.course === taskCourse);
@@ -643,12 +650,12 @@ function renderTasks(root) {
       ${Sync.hookError ? errorNote('הסנכרון עם Google Tasks לא עובד', Sync.hookError) : ''}
       <div class="filters">
         <div class="seg small">
-          ${[['open', 'פתוחות'], ['done', 'בוצעו'], ['all', 'הכל']].map(([v, l]) => `<button data-f="${v}" class="${taskFilter === v ? 'on' : ''}">${l}</button>`).join('')}
+          ${[['week', 'השבוע הקרוב'], ['open', 'כל הפתוחות'], ['done', 'בוצעו'], ['all', 'הכל']].map(([v, l]) => `<button data-f="${v}" class="${taskFilter === v ? 'on' : ''}">${l}</button>`).join('')}
         </div>
         <select id="fType"><option value="all">כל הסוגים</option>${Object.entries(TASK_TYPES).map(([k, v]) => `<option value="${k}" ${taskType === k ? 'selected' : ''}>${v.label}</option>`).join('')}</select>
         <select id="fCourse"><option value="all">כל הקורסים</option>${usedCourses.map(c => `<option value="${esc(c)}" ${taskCourse === c ? 'selected' : ''}>${esc(courseLabel(c))}</option>`).join('')}</select>
       </div>
-      ${taskFilter === 'open' ? groupedOpenTasks(list) : list.length ? `<ul class="task-list">${list.map(taskItem).join('')}</ul>` : '<p class="empty">אין משימות כאן.</p>'}
+      ${taskFilter === 'open' || taskFilter === 'week' ? groupedOpenTasks(list, taskFilter === 'week') : list.length ? `<ul class="task-list">${list.map(taskItem).join('')}</ul>` : '<p class="empty">אין משימות כאן.</p>'}
     </section>`;
   $('#addTask').onclick = () => editTask(null);
   bindGoogleBar(root);

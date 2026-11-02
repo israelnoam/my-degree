@@ -104,17 +104,39 @@ function advisorMd(text) {
     .replace(/\n/g, '<br>');
 }
 
-function openAdvisor() {
+// `prefill` puts a question in the box without sending it, so you can edit it first.
+function openAdvisor(prefill = '') {
   if (!advisorDlg) {
     advisorDlg = document.createElement('dialog');
     advisorDlg.id = 'xAdvisorDlg';
     document.body.appendChild(advisorDlg);
     advisorDlg.addEventListener('click', e => { if (e.target === advisorDlg) advisorDlg.close(); });
   }
+  $('#modal').open && $('#modal').close();
   drawAdvisor();
   if (!advisorDlg.open) advisorDlg.showModal();
-  $('#advInput', advisorDlg)?.focus();
+  const input = $('#advInput', advisorDlg);
+  if (input && prefill && !advisorBusy) { input.value = prefill; input.setSelectionRange(prefill.length, prefill.length); }
+  input?.focus();
 }
+
+// The question a course's "ask the advisor" button starts with. The course number makes the
+// advisor attach that course's CheeseFork data.
+function askAboutCourse(code) {
+  const c = courseByCode(code), e = ELECTIVE_BY_CODE[code];
+  const name = c?.name || e?.name || code;
+  const q = c && isComplete(c)
+    ? `ספר לי על ${name} (${code}): איך הוא משפיע על הממוצע ועל דרישות התואר שלי, ולאילו קורסים הוא פותח את הדרך?`
+    : `ספר לי על ${name} (${code}): על מה הקורס, האם דרישות הקדם שלי מולאו, מתי כדאי לי לקחת אותו ואיך הוא משתלב בתוכנית ובעומס שלי?`;
+  openAdvisor(q);
+}
+
+const askAdvisorBtn = code => `<button type="button" class="btn small" data-askadv="${esc(code)}">🤖 שאל את היועץ</button>`;
+// One listener for every such button (course window, catalog cards).
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-askadv]');
+  if (b) { e.preventDefault(); askAboutCourse(b.dataset.askadv); }
+});
 
 function drawAdvisor() {
   const has = !!claudeKey();

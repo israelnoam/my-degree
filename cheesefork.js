@@ -216,5 +216,5 @@ function courseLinks(c) {
     ['🏛️ קטלוג הטכניון', `https://students.technion.ac.il/local/technionsearch/course/${c8}`],
     ['📁 תיקייה בדרייב', `https://drive.google.com/drive/search?q=${q}`],
   ];
-  return `<div class="link-row">${links.map(([l, u]) => `<a class="btn small" href="${esc(u)}" target="_blank" rel="noopener">${l}</a>`).join('')}</div>`;
+  return `<div class="link-row">${askAdvisorBtn(c.code)}${links.map(([l, u]) => `<a class="btn small" href="${esc(u)}" target="_blank" rel="noopener">${l}</a>`).join('')}</div>`;
 }

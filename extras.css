@@ -133,3 +133,20 @@ table.cmp th, table.cmp td { padding: 7px 8px; border-bottom: 1px solid var(--li
   .adv-msg { max-width: 96%; }
 }
 #xAdvisorDlg .adv-form { padding: 0; overflow: visible; max-height: none; }
+
+/* weekly digest (in the bell drawer) */
+.digest-sec > summary { cursor: pointer; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; list-style: none; }
+.digest-sec > summary::-webkit-details-marker { display: none; }
+.digest-sec > summary h3 { margin: 0; }
+.digest-sec > summary::before { content: '▸'; color: var(--muted); }
+.digest-sec[open] > summary::before { content: '▾'; }
+.digest { background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-top: 8px; }
+.digest h4 { margin: 12px 0 6px; font-size: .9rem; }
+.digest-kpis { display: flex; gap: 8px; flex-wrap: wrap; }
+.digest-kpis span { flex: 1; min-width: 110px; text-align: center; background: var(--panel); border-radius: 10px; padding: 6px; font-size: .8rem; color: var(--muted); }
+.digest-kpis b { display: block; font-size: 1.2rem; color: var(--accent); }
+.badge-new { font-size: .7rem; background: var(--red); color: #fff; border-radius: 99px; padding: 1px 8px; vertical-align: middle; }
+.notif-row[data-course] { cursor: pointer; }
+
+/* catalog card actions */
+.ci-actions { display: flex; gap: 6px; align-items: center; flex: none; }

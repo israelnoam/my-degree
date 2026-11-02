@@ -347,20 +347,87 @@ function notifData() {
   return { todaySlots, urgent, exams, left: todaySlots.filter(s => toMin(s.end) > nowMin).length };
 }
 
+// ---------- weekly digest (new every Sunday) ----------
+const DIGEST_LS = 'pp_digest_seen';
+const digestWeek = () => ymd(startOfWeek(new Date())); // the Sunday that starts this week
+const digestUnseen = () => lsGet(DIGEST_LS) !== digestWeek();
+
+// Order of a semester id in time (a summer comes right after its spring).
+const semOrder = id => id > 100 ? id - 100 + 0.5 : id;
+
+function digestData() {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const days = d => daysBetween(today, d);
+  const due = tasksWithin(7);
+  // Exams in the next 14 days: exam tasks, plus CheeseFork dates of the courses you study (when loaded).
+  const exams = [];
+  for (const t of Store.list('task').filter(t => t.type === 'exam' && !t.done && t.due)) {
+    const d = new Date(t.due.slice(0, 10) + 'T00:00');
+    exams.push({ name: t.title, course: t.course, date: d });
+  }
+  const cur = currentSemesterNumber();
+  for (const c of courses().filter(c => c.status === 'active' || (c.sem === cur && !isComplete(c)))) {
+    const g = CF.data[cfSemesterKey(cur)]?.get(toCode8(c.code))?.general;
+    for (const [k, l] of [['מועד א', 'א׳'], ['מועד ב', 'ב׳']]) {
+      const d = parseCfDate(g?.[k]);
+      if (d && !exams.some(e => e.course === c.code && +e.date === +d)) exams.push({ name: `${c.name} – מועד ${l}`, course: c.code, date: d });
+    }
+  }
+  const soonExams = exams.filter(e => days(e.date) >= 0 && days(e.date) <= 14).sort((a, b) => a.date - b.date);
+  // Courses whose semester is over but that have no final grade yet.
+  const noGrade = courses().filter(c => c.sem && semOrder(c.sem) < cur && !isComplete(c));
+  return { due, exams: soonExams, noGrade, days };
+}
+
+function digestHtml(x = digestData()) {
+  const when = d => { const n = x.days(d); return n === 0 ? 'היום' : n === 1 ? 'מחר' : `בעוד ${n} ימים`; };
+  return `<div class="digest">
+    <div class="digest-kpis">
+      <span><b>${x.due.length}</b> להגשה השבוע</span><span><b>${x.exams.length}</b> מבחנים בשבועיים</span><span><b>${x.noGrade.length}</b> קורסים בלי ציון</span>
+    </div>
+    <h4>📝 להגשה השבוע</h4>
+    ${x.due.length ? x.due.map(t => `<div class="notif-row ${dueText(t).overdue ? 'late' : ''}" data-task="${esc(t.id)}"><span class="grow">${(TASK_TYPES[t.type] || TASK_TYPES.other).icon} ${esc(t.title)}${t.course ? ` <small class="muted">${esc(courseLabel(t.course))}</small>` : ''}</span><small>${dueText(t).rel}</small></div>`).join('') : '<p class="muted">אין הגשות השבוע 🎉</p>'}
+    <h4>🎯 מבחנים בשבועיים הקרובים</h4>
+    ${x.exams.length ? x.exams.map(e => `<div class="notif-row"><b>${fmtDate(e.date)}</b><span class="grow">${esc(e.name)}</span><small>${when(e.date)}</small></div>`).join('') : '<p class="muted">אין מבחנים בשבועיים הקרובים.</p>'}
+    <h4>📭 קורסים שהסמסטר שלהם נגמר ואין להם ציון</h4>
+    ${x.noGrade.length ? x.noGrade.map(c => `<div class="notif-row" data-course="${esc(c.code)}"><span class="grow">${esc(c.name)}</span><small class="muted">${esc(semName(c.sem))}</small></div>`).join('') : '<p class="muted">כל הקורסים מסמסטרים קודמים מעודכנים ✓</p>'}
+  </div>`;
+}
+
+// On Sunday, once per week while the app is open: a device notification with the digest's headline.
+function digestNotify() {
+  if (new Date().getDay() !== 0 || !digestUnseen() || lsGet('pp_digest_notified') === digestWeek()) return;
+  if (lsGet(NOTIF_LS) !== '1' || window.Notification?.permission !== 'granted') return;
+  const x = digestData();
+  lsSet('pp_digest_notified', digestWeek());
+  new Notification('📰 הסיכום השבועי שלך', { body: `${x.due.length} להגשה השבוע · ${x.exams.length} מבחנים בשבועיים · ${x.noGrade.length} קורסים בלי ציון`, icon: 'icons/icon-192.png' });
+}
+
 function updateBell() {
   const b = $('#xBell .badge');
   if (!b) return;
-  const n = notifData().urgent.length;
+  // The new weekly digest counts as one more item until you open the drawer.
+  const n = notifData().urgent.length + (digestUnseen() ? 1 : 0);
   b.textContent = n || '';
   b.hidden = !n;
+  $('#xBell').title = digestUnseen() ? 'התראות · סיכום שבועי חדש' : 'התראות';
 }
 
-function openNotifications() {
+async function openNotifications() {
+  // Exam dates for the digest come from CheeseFork; don't wait for it for long.
+  await withTimeout(CF.loadRecent(), 4000).catch(() => {});
   const d = notifData();
+  const fresh = digestUnseen();
+  lsSet(DIGEST_LS, digestWeek());
+  updateBell();
   const enabled = lsGet(NOTIF_LS) === '1' && window.Notification?.permission === 'granted';
   const dueLabel = days => days < 0 ? `באיחור ${-days} ימים` : days === 0 ? 'היום' : days === 1 ? 'מחר' : `בעוד ${days} ימים`;
   openWide(`
     <h2>🔔 עדכונים והתראות</h2>
+    <details class="notif-sec digest-sec" ${fresh || new Date().getDay() === 0 ? 'open' : ''}>
+      <summary><h3>📰 הסיכום השבועי ${fresh ? '<span class="badge-new">חדש</span>' : ''}</h3><small class="muted">מתעדכן בכל יום ראשון</small></summary>
+      ${digestHtml()}
+    </details>
     <div class="notif-sec"><h3>🕒 השיעורים של היום (${DAY_NAMES[new Date().getDay()]})</h3>
       ${d.todaySlots.length ? d.todaySlots.map(s => `<div class="notif-row"><b dir="ltr">${esc(s.start)}–${esc(s.end)}</b>
         <span class="grow">${esc(s.course ? courseLabel(s.course) : s.title)} <small class="muted">${esc(s.stype || '')}</small></span><small class="muted">${esc(s.room || '')}</small></div>`).join('')
@@ -375,6 +442,7 @@ function openNotifications() {
       <p class="muted">עובדת רק כשהאפליקציה פתוחה (דפדפן או PWA פתוחים ברקע). להתראות כשהאפליקציה סגורה השתמש ב-Instinct ב-WhatsApp.</p></div>
     ${closeBtn}`, form => {
     $$('[data-task]', form).forEach(r => r.onclick = () => { $('#modal').close(); setTimeout(() => editTask(r.dataset.task), 30); });
+    $$('[data-course]', form).forEach(r => r.onclick = () => { $('#modal').close(); setTimeout(() => editCourse(r.dataset.course), 30); });
     $('#notifToggle', form).onchange = async e => {
       if (e.target.checked) {
         const p = await Notification.requestPermission();
@@ -389,6 +457,7 @@ function openNotifications() {
 const firedNotif = new Set();
 setInterval(() => {
   if (lsGet(NOTIF_LS) !== '1' || window.Notification?.permission !== 'granted') return;
+  digestNotify();
   const now = new Date(), nowMin = now.getHours() * 60 + now.getMinutes();
   for (const s of slots()) {
     const diff = toMin(s.start) - nowMin;
