@@ -257,6 +257,21 @@ async function claudeClient() {
   return new Anthropic({ apiKey: key, dangerouslyAllowBrowser: true });
 }
 
+// A readable explanation of a failed API call, and where to fix it.
+const ANTHROPIC_BILLING = 'https://console.anthropic.com/settings/billing';
+function aiError(e) {
+  const msg = String(e?.error?.error?.message || e?.message || e || '');
+  if (/credit balance/i.test(msg)) return { text: 'אין מספיק קרדיט בחשבון ה-API שלך ב-Anthropic. הוסף קרדיט (אפשר גם סכום קטן, כמה דולרים) ונסה שוב בעוד דקה.', url: ANTHROPIC_BILLING, link: 'להוספת קרדיט ↗' };
+  if (e?.status === 401) return { text: 'מפתח ה-API לא תקין או בוטל. צור מפתח חדש והדבק אותו בהגדרות AI.', url: 'https://console.anthropic.com/settings/keys', link: 'למפתחות ↗' };
+  if (e?.status === 403) return { text: 'למפתח הזה אין הרשאה למודל. בדוק את המפתח והחשבון ב-Anthropic.', url: 'https://console.anthropic.com/settings/keys', link: 'למפתחות ↗' };
+  if (e?.status === 429) return { text: 'יותר מדי בקשות בזמן קצר (או שהגעת למגבלת השימוש בחשבון). חכה דקה ונסה שוב.' };
+  if (e?.status === 529 || /overloaded/i.test(msg)) return { text: 'השירות של Anthropic עמוס כרגע. נסה שוב בעוד כמה דקות.' };
+  if (e?.status >= 500) return { text: 'תקלה זמנית אצל Anthropic. נסה שוב בעוד כמה דקות.' };
+  if (!navigator.onLine || /connection|network|fetch/i.test(msg)) return { text: 'אין חיבור ל-Anthropic. בדוק את האינטרנט ונסה שוב.' };
+  return { text: msg || 'הבקשה נכשלה' };
+}
+const aiErrorHtml = e => { const x = aiError(e); return `${esc(x.text)}${x.url ? ` <a href="${x.url}" target="_blank" rel="noopener">${x.link}</a>` : ''}`; };
+
 async function callClaudeJson(system, prompt, schema) {
   const client = await claudeClient();
   const response = await client.beta.messages.create({
@@ -401,7 +416,7 @@ function reviewImport(text) {
       toast('Claude קורא את קורות החיים…');
       callClaudeJson('You extract CV data into JSON. Never invent information.', `${PROFILE_SCHEMA_PROMPT}\n\n<cv>\n${txt}\n</cv>`, PROFILE_IMPORT_SCHEMA)
         .then(p => { applyImport(p, replace); toast('הייבוא הושלם'); })
-        .catch(e => alert('הייבוא עם AI נכשל: ' + e.message));
+        .catch(e => alert('הייבוא עם AI נכשל: ' + aiError(e).text));
       return;
     }
     applyImport(parseCvText(txt), replace);
@@ -679,7 +694,7 @@ function bindTargetView(root, p) {
     const btn = e.currentTarget;
     btn.disabled = true; btn.textContent = '🤖 Claude כותב…';
     try { finish(await tailorWithAi(p, { ...t, ...val() })); }
-    catch (err) { alert('ההתאמה עם AI נכשלה: ' + (err.message || err)); btn.disabled = false; btn.textContent = '🤖 התאם עם AI'; }
+    catch (err) { alert('ההתאמה עם AI נכשלה: ' + aiError(err).text); btn.disabled = false; btn.textContent = '🤖 התאם עם AI'; }
   };
   $('#tCopyPrompt').onclick = () => {
     const text = `${CV_SYSTEM}\n\n${aiPrompt(p, { ...t, ...val() })}\n\n(Return the CV as clean text, ready to paste, instead of JSON.)`;

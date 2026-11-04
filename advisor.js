@@ -56,6 +56,9 @@ ${courses().map(courseLine).join('\n')}
 ## קורסי בחירה שעוד לא בתוכנית (קוד | שם | נק״ז | רשימה)
 ${ELECTIVES.filter(e => !inPlan.has(e[0])).map(([code, name, cr, l]) => `- ${code} | ${name} | ${cr} | ${LISTS[l].short}`).join('\n')}
 
+## רשימת המשאלות שלי (קורסים שאני שוקל, עוד לא בתוכנית)
+${wishes().length ? wishes().map(w => `- ${w.code} | ${w.name} | ${fmt(w.credits)} נק״ז | ${LISTS[w.list]?.short || 'מחוץ לרשימות'} | ${w.prio === 'high' ? 'רוצה מאוד' : 'אולי'}${w.sem ? ` | רוצה ב-${semName(w.sem)}` : ''}${w.note ? ` | הערה: ${w.note}` : ''}`).join('\n') : 'ריקה.'}
+
 ## משימות ומבחנים פתוחים (באיחור ו-30 הימים הקרובים)
 ${soon.length ? soon.map(t => `- ${t.due.slice(0, 16).replace('T', ' ')} | ${(TASK_TYPES[t.type] || TASK_TYPES.other).label} | ${t.title}${t.course ? ` | ${courseLabel(t.course)}` : ''}${dueText(t).overdue ? ' | באיחור' : ''}`).join('\n') : 'אין.'}
 
@@ -221,7 +224,7 @@ async function askAdvisor(question) {
     advisorBusy = false;
     drawAdvisor();
     $('#advInput', advisorDlg).value = question;
-    $('#advLog', advisorDlg).insertAdjacentHTML('beforeend', `<p class="warn">⚠️ ${esc(e.status === 401 ? 'מפתח ה-API לא תקין. בדוק אותו בהגדרות AI.' : e.message || e)}</p>`);
+    $('#advLog', advisorDlg).insertAdjacentHTML('beforeend', `<p class="warn">⚠️ ${aiErrorHtml(e)}</p>`);
     return;
   }
   advisorBusy = false;

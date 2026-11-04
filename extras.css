@@ -162,3 +162,19 @@ table.cmp th, table.cmp td { padding: 7px 8px; border-bottom: 1px solid var(--li
 .ri-kind { font-size: .78rem; color: var(--muted); }
 .ri-meta { font-size: .82rem; color: var(--accent); }
 .opps-title { margin: 6px 0 12px; }
+
+/* wishlist (planner ← רשימת משאלות) */
+.wish-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.wish-head h2 { margin-bottom: 4px; }
+.wish-add { margin: 12px 0; }
+.wish-add input { width: 100%; }
+.wish-sum { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-weight: 600; }
+.wish-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
+.wish-item { background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+.wish-item.high { border-color: var(--accent); }
+.wish-item h3 { margin: 6px 0 2px; }
+.wi-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.wi-prio { background: var(--panel); border: 1px solid var(--line); border-radius: 99px; padding: 2px 10px; font-size: .78rem; cursor: pointer; }
+.wish-item.high .wi-prio { border-color: var(--accent); color: var(--accent); }
+.wi-meta { font-size: .82rem; color: var(--muted); margin: 2px 0 8px; }
+.btn.wish-on { color: var(--accent); border-color: var(--accent); }

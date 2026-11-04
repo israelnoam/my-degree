@@ -90,8 +90,10 @@ let cmpPick = ['', '', ''];
 function comparablePool() {
   const inPlan = courses().map(c => ({ code: c.code, name: c.name, credits: c.credits, list: courseCat(c), plan: true }));
   const have = new Set(inPlan.map(c => c.code));
+  const wished = wishes().filter(w => !have.has(w.code)).map(w => ({ code: w.code, name: w.name, credits: w.credits, list: w.list, plan: false, wish: true }));
+  wished.forEach(w => have.add(w.code));
   const rest = ELECTIVES.filter(e => !have.has(e[0])).map(([code, name, credits, list]) => ({ code, name, credits, list, plan: false }));
-  return [...inPlan, ...rest];
+  return [...inPlan, ...wished, ...rest];
 }
 
 // The CheeseFork facts shown for a course, shared by the comparator and the catalog details.
@@ -185,7 +187,7 @@ async function openComparator(preset) {
         res.hidden = !input.value.trim();
         const group = (title, list) => list.length ? `<div class="cmp-gh">${title}</div>${list.map(p =>
           `<button type="button" class="cmp-opt" data-code="${esc(p.code)}">${esc(p.name)} <small class="muted">${esc(p.code)}</small></button>`).join('')}` : '';
-        res.innerHTML = m.length ? group('בתוכנית שלי', m.filter(p => p.plan)) + group('קורסי בחירה', m.filter(p => !p.plan)) : '<p class="muted">לא נמצא קורס.</p>';
+        res.innerHTML = m.length ? group('בתוכנית שלי', m.filter(p => p.plan)) + group('⭐ רשימת משאלות', m.filter(p => p.wish)) + group('קורסי בחירה', m.filter(p => !p.plan && !p.wish)) : '<p class="muted">לא נמצא קורס.</p>';
       };
       // Enter takes the first match (and must not submit the dialog's form).
       input.onkeydown = e => {
@@ -526,6 +528,7 @@ function openPalette() {
     { icon: '📖', label: 'זכויות ושאלות נפוצות', hint: 'פעולה', run: openFaq },
     { icon: '📸', label: 'ייצוא מפת הקורסים כתמונה', hint: 'פעולה', run: exportMapPng },
     { icon: '🖨️', label: 'הדפסת התוכנית', hint: 'פעולה', run: printPlan },
+    { icon: '⭐', label: 'רשימת משאלות', hint: 'מעבר למסך', run: () => { plannerTab = 'wish'; go('planner'); } },
     { icon: '🤖', label: 'יועץ תואר (AI)', hint: 'שאל על התואר שלך', run: () => openAdvisor() },
     { icon: '🧭', label: 'סיור באפליקציה', hint: 'מדריך', run: () => startTour() },
     { icon: '⚙️', label: 'הגדרות', hint: 'מעבר למסך', run: () => go('settings') },

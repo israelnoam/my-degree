@@ -159,6 +159,7 @@ function catalogHtml() {
             <div class="ci-body">${catDetailsCache[i.code] || '<p class="muted">טוען מ-CheeseFork…</p>'}</div></details>
         </div>
         <div class="ci-actions">
+          ${wishStar(i.code)}
           <button type="button" class="btn small" data-askadv="${esc(i.code)}" title="שאל את יועץ התואר על הקורס" aria-label="שאל את יועץ התואר על הקורס">🤖</button>
           ${i.planned ? `<button class="btn small" data-code="${esc(i.code)}">${i.course?.sem ? `סמסטר ${i.course.sem}` : 'בתוכנית'}</button>`
             : `<button class="btn small primary" data-addcat="${esc(i.code)}">＋ לתוכנית</button>`}
@@ -209,20 +210,23 @@ function bindCatDetails(root) {
   };
 }
 
-function addToPlan(code, sem) {
-  const e = ELECTIVE_BY_CODE[code];
+// `info` ({name, credits, list, sem}) is for a course outside the elective lists (e.g. from the wishlist);
+// its `sem` is the semester picked by default. Resolves with the semester, or never if cancelled.
+function addToPlan(code, sem, info) {
+  const e = ELECTIVE_BY_CODE[code] || info;
   const nSem = settings().semesters || 8;
   const now = currentSemesterNumber();
   const pick = sem ? Promise.resolve(sem) : new Promise(resolve => openModal(`
     <h2>＋ ${esc(e.name)}</h2>
-    <p class="muted">${esc(code)} · ${fmt(e.credits)} נק״ז · רשימה ${LISTS[e.list].short}</p>
+    <p class="muted">${esc(code)} · ${fmt(e.credits)} נק״ז${LISTS[e.list] ? ` · רשימה ${LISTS[e.list].short}` : ''}</p>
     <label>באיזה סמסטר?<select name="sem">${semIds().filter(s => (s > 100 ? s - 100 : s) >= now)
-      .map(s => `<option value="${s}">${s > 100 ? 'קיץ' : `סמסטר ${s}`} · ${semesterYearLabel(s)}</option>`).join('')}</select></label>
+      .map(s => `<option value="${s}" ${+info?.sem === s ? 'selected' : ''}>${s > 100 ? 'קיץ' : `סמסטר ${s}`} · ${semesterYearLabel(s)}</option>`).join('')}</select></label>
     <div class="actions"><span class="spacer"></span><button class="btn" value="cancel" formnovalidate>ביטול</button><button class="btn primary" value="save">הוסף</button></div>`,
     (a, fd) => resolve(+fd.get('sem'))));
-  pick.then(s => {
-    Store.put('course', code, { code, name: e.name, credits: e.credits, sem: s, list: e.list, type: 'elective', prereqs: [], status: s === now ? 'active' : 'none', grade: null, notes: '' });
+  return pick.then(s => {
+    Store.put('course', code, { code, name: e.name, credits: +e.credits || 0, sem: s, list: e.list || 'E', type: 'elective', prereqs: [], status: s === now ? 'active' : 'none', grade: null, notes: '' });
     toast(`נוסף לסמסטר ${s}`);
+    return s;
   });
 }
 
@@ -333,7 +337,7 @@ function reserveHtml() {
 // ---------- the page ----------
 let plannerTab = 'plan';
 function renderPlanner(root) {
-  const tabs = [['plan', '🗓️ התוכנית'], ['catalog', '🧩 קורסי בחירה'], ['opps', '🚀 הזדמנויות'], ['reserve', '🎖️ מילואים']];
+  const tabs = [['plan', '🗓️ התוכנית'], ['catalog', '🧩 קורסי בחירה'], ['wish', '⭐ רשימת משאלות'], ['opps', '🚀 הזדמנויות'], ['reserve', '🎖️ מילואים']];
   root.innerHTML = `
     <section class="panel">
       <div class="toolbar"><h2>🎯 תכנון תואר</h2>
@@ -343,17 +347,21 @@ function renderPlanner(root) {
     <section class="panel">
       ${plannerTab === 'plan' ? semesterColumns()
         : plannerTab === 'catalog' ? catalogHtml()
+        : plannerTab === 'wish' ? wishlistHtml()
         : plannerTab === 'opps' ? `${radarHtml()}<h2 class="opps-title">🎓 תוכניות ומסלולים</h2><div class="opps">${opportunitiesHtml()}</div>`
         : reserveHtml()}
     </section>`;
 
   $$('[data-ptab]', root).forEach(b => b.onclick = () => { plannerTab = b.dataset.ptab; render(); });
   $$('[data-code]', root).forEach(b => b.onclick = () => editCourse(b.dataset.code));
-  $$('[data-addcat]', root).forEach(b => b.onclick = () => addToPlan(b.dataset.addcat));
+  // Moving a wished course into the plan takes it off the wishlist.
+  $$('[data-addcat]', root).forEach(b => b.onclick = () => addToPlan(b.dataset.addcat).then(() => { if (isWished(b.dataset.addcat)) Store.remove('wish', b.dataset.addcat); }));
   $$('[data-addsem]', root).forEach(b => b.onclick = () => { catFilter = 'all'; plannerTab = 'catalog'; render(); toast(`בחר קורס – הוא ייכנס לסמסטר לבחירתך`); });
   $$('[data-cat]', root).forEach(b => b.onclick = () => { catFilter = b.dataset.cat; render(); });
   bindCatDetails(root);
   if (plannerTab === 'opps') bindRadar(root);
+  if (plannerTab === 'wish') bindWishlist(root);
+  bindWishStars(root);
   const search = $('#catSearch', root);
   if (search) search.oninput = () => { catQuery = search.value; const pos = search.selectionStart; render(); const s2 = $('#catSearch'); s2.focus(); s2.setSelectionRange(pos, pos); };
   const open = $('#catOpen', root);
@@ -373,7 +381,7 @@ function renderPlanner(root) {
   // Load CheeseFork once per launch (it refreshes itself once a day, see CF.fetchDaily).
   // Never retry from a re-render: that loop used to freeze the page.
   const cfRetryOk = !renderPlanner.cfTriedAt;
-  if ((plannerTab === 'catalog' || plannerTab === 'plan') && !Object.keys(CF.data).length && !renderPlanner.loading && cfRetryOk) {
+  if (['catalog', 'plan', 'wish'].includes(plannerTab) && !Object.keys(CF.data).length && !renderPlanner.loading && cfRetryOk) {
     renderPlanner.loading = true;
     renderPlanner.cfTriedAt = Date.now();
     CF.loadRecent().finally(() => {

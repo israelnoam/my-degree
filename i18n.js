@@ -333,6 +333,29 @@ const EN = {
   'עברית': 'עברית',
 
   // ---------- more from the coverage check ----------
+  // ---------- wishlist ----------
+  'רשימת משאלות': 'Wishlist', 'רוצה מאוד': 'Really want', 'אולי': 'Maybe', 'השווה את המועדפים': 'Compare favorites', 'עזור לי לבחור': 'Help me choose',
+  'קורסים שאולי תרצה לקחת. הם לא נכנסים לתוכנית ולדרישות התואר עד שתעביר אותם לסמסטר': 'Courses you might take. They stay out of the plan and degree requirements until you move them into a semester',
+  'הוסף קורס: חפש לפי שם או מספר (גם קורסים מחוץ לרשימות הבחירה': 'Add a course: search by name or number (including courses outside the elective lists',
+  'לחץ להחלפה: רוצה מאוד / אולי': 'Click to switch: really want / maybe', 'מתי הייתי רוצה': 'When I’d like to take it', '— עוד לא יודע —': '— not sure yet —', 'עוד לא יודע': 'not sure yet',
+  'למה / הערות': 'Why / notes', 'למשל: אם ייפתח בחורף, בגלל הפרויקט': 'e.g. if it opens in winter, because of the project', 'השווה': 'Compare', 'כבר בתוכנית': 'already in the plan',
+  'הרשימה ריקה. הוסף קורסים כאן, או לחץ ☆ ליד קורס בלשונית "קורסי בחירה"': 'The list is empty. Add courses here, or press ☆ next to a course in the "Electives" tab',
+  'ברשימת המשאלות (לחץ להסרה': 'On your wishlist (click to remove', 'הוסף לרשימת המשאלות': 'Add to wishlist', 'הסר מרשימת המשאלות': 'Remove from wishlist',
+  'הוסר מרשימת המשאלות': 'Removed from the wishlist', 'הקורס כבר בתוכנית': 'The course is already in the plan', 'לא מצאתי את הקורס': 'Couldn’t find the course', 'אחר': 'Other',
+  'טוען מ-CheeseFork…': 'Loading from CheeseFork…', 'נפתח': 'Offered', 'מחוץ לרשימות': 'outside the lists',
+
+  // ---------- AI errors ----------
+  'אין מספיק קרדיט בחשבון ה-API שלך ב-Anthropic. הוסף קרדיט (אפשר גם סכום קטן, כמה דולרים) ונסה שוב בעוד דקה': 'Your Anthropic API account is out of credit. Add credit (even a few dollars is enough) and try again in a minute',
+  'להוספת קרדיט ↗': 'Add credit ↗', 'למפתחות ↗': 'API keys ↗',
+  'מפתח ה-API לא תקין או בוטל. צור מפתח חדש והדבק אותו בהגדרות AI': 'The API key is invalid or was revoked. Create a new key and paste it in AI settings',
+  'למפתח הזה אין הרשאה למודל. בדוק את המפתח והחשבון ב-Anthropic': 'This key has no access to the model. Check the key and the account at Anthropic',
+  'יותר מדי בקשות בזמן קצר (או שהגעת למגבלת השימוש בחשבון). חכה דקה ונסה שוב': 'Too many requests in a short time (or you hit the account’s usage limit). Wait a minute and try again',
+  'השירות של Anthropic עמוס כרגע. נסה שוב בעוד כמה דקות': 'Anthropic’s service is busy right now. Try again in a few minutes',
+  'תקלה זמנית אצל Anthropic. נסה שוב בעוד כמה דקות': 'A temporary problem at Anthropic. Try again in a few minutes',
+  'אין חיבור ל-Anthropic. בדוק את האינטרנט ונסה שוב': 'Can’t reach Anthropic. Check your internet and try again', 'הבקשה נכשלה': 'The request failed',
+  'ההתאמה עם AI נכשלה': 'AI tailoring failed', 'הייבוא עם AI נכשל': 'AI import failed',
+  'קורסים שאולי תרצה לקחת, בלי להתחייב: סמן ☆ ליד קורס בחירה או חפש כל קורס, דרג "רוצה מאוד" או "אולי", כתוב למה, והעבר לסמסטר כשתחליט. אפשר גם להשוות אותם ולשאול את היועץ': 'Courses you might take, without committing: press ☆ next to an elective or search any course, rate it "really want" or "maybe", note why, and move it into a semester when you decide. You can also compare them and ask the advisor',
+
   'צור מפתח API ב': 'Create an API key at', 'הדבק אותו בלשונית': 'Paste it in', 'המפתח נשמר': 'The key is stored',
   'קו״ח ← 🤖 הגדרות AI': 'CV → 🤖 AI settings',
   'תוכנות: SolidWorks, MATLAB, Python\nייצור: CNC, הדפסת תלת-ממד': 'Software: SolidWorks, MATLAB, Python\nManufacturing: CNC, 3D printing',
@@ -394,6 +417,8 @@ const EN_PATTERNS = [
   ['{0} (צפוי)', '{0} (expected)'], ['(צריך {0} בממוצע)', '(needs an average of {0})'], ['(בגיליון: {0} נק״ז, ממוצע {1})', '(on the sheet: {0} credits, average {1})'], ['(קבוצה {0})', '(group {0})'],
   ['{0} (לא נפתח בסמסטרים האחרונים, שם לא ידוע)', '{0} (not offered in recent semesters, name unknown)'], ['📰 הסיכום השבועי {0}', '📰 Weekly digest {0}'],
   ['הוסף ל{0}', 'Add to {0}'],
+  ['{0} נוסף לרשימת המשאלות', '{0} added to the wishlist'], ['נפתח: {0}', 'Offered: {0}'], ['{0} קורסים · {1} נק״ז', '{0} courses · {1} credits'],
+  ['מתוך רשימת המשאלות שלי ({0}): אילו כדאי לי לקחת, באיזה סמסטר, ומה מהם עוזר לי הכי הרבה בדרישות התואר?', 'From my wishlist ({0}): which should I take, in which semester, and which helps my degree requirements the most?'],
   ['{0} ({1})', '{0} ({1})'],
 ];
 

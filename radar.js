@@ -107,7 +107,7 @@ async function runRadar({ quiet = false } = {}) {
     if (!quiet || fresh) toast(fresh ? `🛰️ נמצאו ${fresh} הזדמנויות חדשות` : 'אין הזדמנויות חדשות השבוע');
   } catch (e) {
     console.error(e);
-    radarError = e.status === 401 ? 'מפתח ה-API לא תקין. בדוק אותו בהגדרות AI.' : (e.message || String(e));
+    radarError = aiErrorHtml(e); // already escaped
     if (!quiet) toast('⚠️ בדיקת ההזדמנויות נכשלה');
   } finally {
     radarBusy = false;
@@ -132,7 +132,7 @@ function radarHtml() {
     <p class="muted">${has
       ? `פעם בשבוע Claude מחפש ברשת האקתונים, תחרויות, מלגות, כנסים ומשרות סטודנט שמתאימים לך. ${when ? `בדיקה אחרונה: ${when}.` : 'עוד לא נבדק.'} כל בדיקה עולה בערך 20–50 סנט.`
       : 'עם מפתח AI (קו״ח ← 🤖 הגדרות AI) האפליקציה תחפש בשבילך פעם בשבוע. עד אז, כאן כדאי לבדוק:'}</p>
-    ${radarError ? `<p class="warn">⚠️ ${esc(radarError)}</p>` : ''}
+    ${radarError ? `<p class="warn">⚠️ ${radarError}</p>` : ''}
     ${items.length ? `<div class="radar-list">${items.map((x, i) => {
       const k = RADAR_KINDS[x.kind] || RADAR_KINDS.other;
       return `<div class="radar-item">

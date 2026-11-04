@@ -151,6 +151,9 @@ function cleanRecord(key, r) {
     c.prereqs = Array.isArray(c.prereqs) ? c.prereqs.map(String) : [];
   } else if (c.kind === 'task') {
     c.title = String(c.title ?? '');
+  } else if (c.kind === 'wish') {
+    if (typeof c.code !== 'string' || typeof c.name !== 'string') return null;
+    c.credits = Number.isFinite(+c.credits) ? +c.credits : 0;
   } else if (c.kind === 'slot') {
     c.day = Number.isFinite(+c.day) ? +c.day : 0;
   }
