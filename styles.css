@@ -498,7 +498,7 @@ dialog h2 { margin-bottom: 14px; }
 /* ---------- performance centre ---------- */
 #stats { cursor: pointer; }
 .perf-tabs { display: inline-flex; margin: 12px 0 16px; }
-.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
 .kpi { background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .kpi small { color: var(--muted); font-size: .8rem; }
 .kpi b { font-size: 1.7rem; color: var(--text); line-height: 1.2; }

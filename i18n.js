@@ -287,7 +287,7 @@ const EN = {
   // ---------- tour ----------
   'ברוכים הבאים ל"התואר שלי"': 'Welcome to "My Degree"',
   'כל התואר במקום אחד: מפת קורסים, תכנון, ציונים, משימות, מערכת שעות, קורות חיים ויועץ AI. הסיור לוקח בערך דקה וחצי – אפשר לדלג בכל רגע': 'Your whole degree in one place: course map, planning, grades, tasks, timetable, CV and an AI advisor. The tour takes about a minute and a half – skip any time',
-  'הממוצע וההתקדמות': 'Average and progress', 'ממוצע משוקלל, נק״ז שהושלמו מתוך התואר וכמה אתה לומד עכשיו. לחיצה כאן פותחת את מרכז הביצועים': 'Weighted average, credits done out of the degree, and how much you’re studying now. Clicking here opens Performance',
+  'הממוצע וההתקדמות': 'Average and progress', 'ממוצע משוקלל ונק״ז שהושלמו מתוך התואר. כמה קורסים עברת וכמה נק״ז אתה לומד עכשיו מופיעים במרכז הביצועים. לחיצה כאן פותחת את מרכז הביצועים': 'Weighted average and credits done out of the degree. Courses passed and credits in progress are in Performance. Clicking here opens it',
   'כמה משימות צריך להגיש בשבעת הימים הקרובים (כולל מה שבאיחור), וכמה מהן באיחור או להיום. לחיצה פותחת את משימות השבוע': 'How many tasks are due in the next seven days (including overdue ones), and how many are overdue or due today. Clicking opens this week’s tasks',
   'הנתונים נשמרים ב-Google Drive שלך ומסתנכרנים בין המחשב, האייפד והטלפון – אוטומטית פעם ביום, או מיד בלחיצה': 'Your data is kept in your Google Drive and syncs between your computer, iPad and phone – automatically once a day, or right away with a click',
   'חפש קורס, קורס בחירה, משימה או פעולה ועבור אליה מיד. עובד מכל מסך': 'Search for a course, elective, task or action and jump straight to it. Works from any screen',
@@ -402,6 +402,7 @@ const EN = {
   'תוכנית:': 'Plan:', 'שנת התחלה (סמסטר חורף)': 'Start year (winter semester)', 'אפס לתוכנית ברירת המחדל': 'Reset to the default plan',
   'איפוס מחזיר את רשימת הקורסים לתוכנית ברירת המחדל של הנדסת מכונות (הציונים והסטטוסים יימחקו; אפשר לבטל מיד אחרי). משימות ומערכת שעות לא נפגעות. להחלפת תוכנית בלי למחוק ציונים: "קטלוג פקולטה" למעלה.': 'Reset puts the course list back to the default Mechanical Engineering plan (grades and statuses are erased; you can undo right after). Tasks and the timetable are not affected. To switch plans without erasing grades: "Faculty catalog" above.',
 
+  '📖 נק״ז בלימוד עכשיו': '📖 Credits in progress',
   // contact
   '💬 יצירת קשר': '💬 Contact', 'יצירת קשר / הצעה לשיפור': 'Contact / suggest an improvement', '💬 יצירת קשר / הצעה לשיפור': '💬 Contact / suggest an improvement', 'מייל': 'Email',
   'יש רעיון לשיפור, משהו שלא עובד או שאלה? אשמח לשמוע. ההודעה נשלחת מהמייל שלך, כך שאוכל לענות לך.': 'Have an idea, something that doesn’t work, or a question? I’d love to hear it. The message is sent from your own email, so I can reply.',
@@ -428,6 +429,7 @@ for (const [he, en] of [['חורף', 'Winter'], ['אביב', 'Spring'], ['קיץ
 
 // Templates: {n} are the values, in the order they appear in the Hebrew.
 const EN_PATTERNS = [
+  ['{0} קורסים פעילים', '{0} active courses'],
   ['היומן "{0}" נוסף ({1} אירועים)', 'Calendar "{0}" added ({1} events)'], ['היומן "{0}" הוסר', 'Calendar "{0}" removed'], ['התוכנית "{0}" נטענה', 'Plan "{0}" loaded'],
   ['נמצאו {0} מסלולים בחוברת', '{0} tracks found in the booklet'], ['{0} קורסים חדשים · {1} יזוזו לסמסטר אחר · {2} בלי שינוי', '{0} new courses · {1} move to another semester · {2} unchanged'],
   ['{0} קורסים · {1} נק״ז בתוכנית · {2} סמסטרים', '{0} courses · {1} credits in the plan · {2} semesters'], ['חורף {0}–{1}', 'Winter {0}–{1}'],

@@ -142,6 +142,7 @@ function renderPerformance(root) {
       <div class="kpi"><small>🎯 ממוצע מצטבר</small><b>${s.gpa === null ? '—' : fmt(s.gpa, 2)}</b><span>מ-${graded.length} קורסים עם ציון</span></div>
       <div class="kpi"><small>📚 נק״ז שהושלמו</small><b>${fmt(s.doneCredits)} <em>/ ${fmt(s.total)}</em></b><span>${fmt((s.doneCredits / s.total) * 100, 1)}% מהתואר</span></div>
       <div class="kpi"><small>✅ קורסים שעברו</small><b>${passed.length}</b><span>${graded.length} עם ציון · ${binaries} בינארי · ${exempt} פטור</span></div>
+      <div class="kpi"><small>📖 נק״ז בלימוד עכשיו</small><b>${fmt(s.activeCredits)}</b><span>${courses().filter(c => c.status === 'active').length} קורסים פעילים</span></div>
       <div class="kpi"><small>⭐ סמסטר מוביל</small><b>${best ? fmt(best.avg, 1) : '—'}</b><span>${best ? esc(semName(best.sem)) : 'ממתין לציונים'}</span></div>
     </div>
 

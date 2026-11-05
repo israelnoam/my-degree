@@ -138,8 +138,6 @@ function renderStats() {
       <div class="bar"><i style="width:${pct}%"></i></div>
       <small><b>${fmt(s.doneCredits)}</b> / ${fmt(s.total)} נק״ז · ${fmt(pct, 0)}%</small>
     </div>
-    <div class="stat hide-sm"><b>${s.doneCount}</b><small>קורסים הושלמו</small></div>
-    <div class="stat hide-sm"><b>${fmt(s.activeCredits)}</b><small>נק״ז בלימוד</small></div>
     ${openTasksStat()}`;
   const stat = $('#openTasksStat');
   if (stat) {
