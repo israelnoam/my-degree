@@ -1,11 +1,11 @@
 // Offline support: app shell is cached; network-first so updates show up right away.
 // Bump VERSION together with the ?v= in index.html on every release.
-const VERSION = 24;
+const VERSION = 25;
 const CACHE = 'planner-v' + VERSION;
 const SHELL = [
   './', 'index.html', 'privacy.html', 'manifest.webmanifest',
   ...['prefs.js', 'styles.css', 'app.js', 'google.js', 'ics.js', 'grades.js', 'store.js', 'data.js', 'catalog.js', 'cheesefork.js', 'planner.js', 'wishlist.js', 'stats.js', 'cv.js', 'extras.js', 'advisor.js', 'plans.js', 'welcome.js', 'tour.js', 'radar.js', 'i18n.js', 'extras.css'].map(f => `${f}?v=${VERSION}`),
-  'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-180.png',
+  'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/icon-180.png',
 ];
 
 self.addEventListener('install', e => {
