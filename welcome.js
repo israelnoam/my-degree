@@ -139,7 +139,7 @@ function openFeedback(kind = 'idea') {
     if (!msg) { alert('כתוב קודם את ההודעה'); return false; }
     const label = (FEEDBACK_KINDS.find(k => k[0] === fd.get('kind')) || FEEDBACK_KINDS[0])[1].replace(/^\S+\s/, '');
     const name = String(fd.get('name') || '').trim();
-    const tech = fd.get('tech') ? `\n\n---\nגרסה ${(document.querySelector('script[src*="app.js"]')?.src.match(/v=(d+)/) || [])[1] || ''} · מסך: ${currentView} · ${LANG} · ${navigator.userAgent.replace(/\s*\([^)]*\)/g, ' ').replace(/\s+/g, ' ').slice(0, 120)}` : '';
+    const tech = fd.get('tech') ? `\n\n---\nגרסה ${(document.querySelector('script[src*="app.js"]')?.src.match(/v=(\d+)/) || [])[1] || ''} · מסך: ${currentView} · ${LANG} · ${navigator.userAgent.replace(/\s*\([^)]*\)/g, ' ').replace(/\s+/g, ' ').slice(0, 120)}` : '';
     const body = `${msg}${name ? `\n\n${name}` : ''}${tech}`;
     location.href = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(`התואר שלי · ${label}`)}&body=${encodeURIComponent(body)}`;
     toast('נפתח המייל שלך: לחץ שם "שלח". תודה! 🙏');
