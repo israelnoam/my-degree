@@ -532,7 +532,7 @@ function openPalette() {
     { icon: '🤖', label: 'יועץ תואר (AI)', hint: 'שאל על התואר שלך', run: () => openAdvisor() },
     { icon: '🧭', label: 'סיור באפליקציה', hint: 'מדריך', run: () => startTour() },
     { icon: '🚀', label: 'צעדים ראשונים', hint: 'רשימת התחלה', run: () => reopenWelcome() },
-    { icon: '📚', label: 'הוסף מערכת מומלצת', hint: 'תוכנית לימודים', run: () => openPlanPicker() },
+    { icon: '📚', label: 'קטלוג פקולטה', hint: 'תוכנית לימודים', run: () => openPlanPicker() },
     { icon: '🔗', label: 'שלח את האפליקציה לחבר', hint: 'קישור', run: () => shareApp() },
     { icon: '⚙️', label: 'הגדרות', hint: 'מעבר למסך', run: () => go('settings') },
   ];

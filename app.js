@@ -1146,7 +1146,7 @@ function renderSettings(root) {
     <section class="panel narrow">
       <h2>🎓 התואר</h2>
       <p>תוכנית: <b>${esc(st.planName || 'הנדסת מכונות (ברירת מחדל)')}</b></p>
-      <div class="row wrap"><button class="btn primary" id="setPlan">📚 הוסף מערכת מומלצת / החלף תוכנית</button></div>
+      <div class="row wrap"><button class="btn primary" id="setPlan">📚 קטלוג פקולטה / החלף תוכנית</button></div>
       <div class="grid2">
         <label>שנת התחלה (סמסטר חורף)<select id="startYear">${Array.from({ length: 9 }, (_, i) => new Date().getFullYear() - 7 + i).map(y => `<option value="${y}" ${y === (st.startYear || 2025) ? 'selected' : ''}>${y}–${y + 1}</option>`).join('')}</select></label>
         <label>סה״כ נק״ז לתואר<input id="totalCredits" type="number" step="0.5" value="${esc(st.totalCredits)}"></label>
@@ -1183,7 +1183,7 @@ function renderSettings(root) {
         <button class="btn" id="importBtn">⬆️ ייבוא מקובץ</button>
         <button class="btn danger" id="resetCurriculum">אפס לתוכנית ברירת המחדל</button>
       </div>
-      <p class="muted">איפוס מחזיר את רשימת הקורסים לתוכנית ברירת המחדל של הנדסת מכונות (הציונים והסטטוסים יימחקו; אפשר לבטל מיד אחרי). משימות ומערכת שעות לא נפגעות. להחלפת תוכנית בלי למחוק ציונים: "הוסף מערכת מומלצת" למעלה.</p>
+      <p class="muted">איפוס מחזיר את רשימת הקורסים לתוכנית ברירת המחדל של הנדסת מכונות (הציונים והסטטוסים יימחקו; אפשר לבטל מיד אחרי). משימות ומערכת שעות לא נפגעות. להחלפת תוכנית בלי למחוק ציונים: "קטלוג פקולטה" למעלה.</p>
       ${Sync.connected ? `<div class="row wrap"><button class="btn" id="listBackups">☁️ גיבויים אוטומטיים מ-Drive (7 ימים)</button></div><div id="backupList"></div>` : ''}
     </section>
 

@@ -1,4 +1,4 @@
-// "הוסף מערכת מומלצת": recommended semester plans.
+// "קטלוג פקולטה": recommended semester plans.
 // - Built in: Mechanical Engineering (the seed curriculum).
 // - From a faculty booklet PDF: Claude reads it and returns each track's semester plan (needs an AI key).
 // - From a plan file: someone exports their plan (or their own course order) and shares the file.
@@ -262,7 +262,7 @@ function planCard(p, current) {
 function openPlanPicker() {
   const st = settings();
   openModal(`
-    <h2>📚 הוסף מערכת מומלצת</h2>
+    <h2>📚 קטלוג פקולטה</h2>
     <p class="muted">בחר את התוכנית המומלצת של המסלול שלך. הקורסים שלה ייכנסו לסמסטרים במפה. קורסים שכבר עשית, לוקח עכשיו או כתבת עליהם הערה לא ישתנו, וגם קורסי בחירה שהוספת נשארים.</p>
     <div class="plan-list">${allPlans().map(p => planCard(p, p.id === st.planId)).join('')}</div>
 

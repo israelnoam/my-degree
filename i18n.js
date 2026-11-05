@@ -364,7 +364,7 @@ const EN = {
 
   // welcome checklist
   'צעדים ראשונים': 'First steps', '🚀 צעדים ראשונים': '🚀 First steps', 'רשימת התחלה': 'Getting started', '(רשות)': '(optional)',
-  'ייבא גיליון ציונים': 'Import your grade sheet', 'הוסף מערכת מומלצת': 'Add a recommended plan', 'שנת התחלה': 'Start year',
+  'ייבא גיליון ציונים': 'Import your grade sheet', 'קטלוג פקולטה': 'Faculty catalog', 'שנת התחלה': 'Start year',
   'חבר יומן': 'Connect a calendar', 'מפתח AI (לא חובה)': 'AI key (optional)', 'סיור קצר באפליקציה': 'A short tour of the app',
   'בחר קובץ PDF': 'Choose a PDF', 'בחר תוכנית': 'Choose a plan', 'אישור': 'Confirm', 'להגדרות היומן': 'Calendar settings', 'הגדר מפתח': 'Set up a key', 'התחל סיור': 'Start the tour',
   'אין לי עדיין ציונים': 'I have no grades yet', 'לא עכשיו': 'Not now', 'בלי AI': 'No AI', 'דלג': 'Skip', 'הסתר': 'Hide',
@@ -382,7 +382,7 @@ const EN = {
   'דקה וחצי שמראה איפה הכול.': 'A minute and a half showing where everything is.',
 
   // degree plans
-  '📚 הוסף מערכת מומלצת': '📚 Add a recommended plan', '📚 הוסף מערכת מומלצת / החלף תוכנית': '📚 Add a recommended plan / switch plan', 'תוכנית לימודים': 'Study plan',
+  '📚 קטלוג פקולטה': '📚 Faculty catalog', '📚 קטלוג פקולטה / החלף תוכנית': '📚 Faculty catalog / switch plan', 'תוכנית לימודים': 'Study plan',
   'בחר את התוכנית המומלצת של המסלול שלך. הקורסים שלה ייכנסו לסמסטרים במפה. קורסים שכבר עשית, לוקח עכשיו או כתבת עליהם הערה לא ישתנו, וגם קורסי בחירה שהוספת נשארים.': 'Choose the recommended plan of your track. Its courses go into the semesters on the map. Courses you finished, are taking or wrote a note on stay as they are, and so do electives you added.',
   'התוכנית שלך': 'your plan', 'מובנית': 'built in', 'בחר': 'Choose', '⬇️ קובץ': '⬇️ File', 'שמור כקובץ כדי לשתף': 'Save as a file to share', 'מחק': 'Delete',
   '📄 מחוברת הפקולטה (PDF) בעזרת AI': '📄 From the faculty booklet (PDF) with AI', 'קובץ החוברת (PDF)': 'Booklet file (PDF)', '🤖 בנה תוכנית מהחוברת': '🤖 Build a plan from the booklet', '🔑 הגדר מפתח AI': '🔑 Set up an AI key',
@@ -400,7 +400,7 @@ const EN = {
   'לא מצאתי תוכנית מומלצת בעמודים האלה. בדוק שבחרת את העמודים עם הטבלאות לפי סמסטר.': 'I found no recommended plan on these pages. Check that you picked the pages with the per-semester tables.',
   'הנדסת מכונות · תוכנית מומלצת תשפ״ו': 'Mechanical Engineering · recommended plan 2025–26', 'הנדסת מכונות (ברירת מחדל)': 'Mechanical Engineering (default)',
   'תוכנית:': 'Plan:', 'שנת התחלה (סמסטר חורף)': 'Start year (winter semester)', 'אפס לתוכנית ברירת המחדל': 'Reset to the default plan',
-  'איפוס מחזיר את רשימת הקורסים לתוכנית ברירת המחדל של הנדסת מכונות (הציונים והסטטוסים יימחקו; אפשר לבטל מיד אחרי). משימות ומערכת שעות לא נפגעות. להחלפת תוכנית בלי למחוק ציונים: "הוסף מערכת מומלצת" למעלה.': 'Reset puts the course list back to the default Mechanical Engineering plan (grades and statuses are erased; you can undo right after). Tasks and the timetable are not affected. To switch plans without erasing grades: "Add a recommended plan" above.',
+  'איפוס מחזיר את רשימת הקורסים לתוכנית ברירת המחדל של הנדסת מכונות (הציונים והסטטוסים יימחקו; אפשר לבטל מיד אחרי). משימות ומערכת שעות לא נפגעות. להחלפת תוכנית בלי למחוק ציונים: "קטלוג פקולטה" למעלה.': 'Reset puts the course list back to the default Mechanical Engineering plan (grades and statuses are erased; you can undo right after). Tasks and the timetable are not affected. To switch plans without erasing grades: "Faculty catalog" above.',
 
   // calendar links
   '🔗 יומנים לפי קישור (Apple, Outlook ועוד)': '🔗 Calendars by link (Apple, Outlook and more)',

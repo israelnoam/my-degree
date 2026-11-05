@@ -32,7 +32,7 @@ function welcomeSteps() {
       text: 'ב-<a href="https://students.technion.ac.il" target="_blank" rel="noopener">פורטל הסטודנטים</a> ← גיליון ציונים ← הורד PDF, ובחר אותו כאן. הקורסים, הציונים, הסמסטרים ושנת ההתחלה ייכנסו לבד.',
       done: !!st.gradesImportedAt || courses().some(c => c.grade != null), skip: 'אין לי עדיין ציונים',
       btn: 'בחר קובץ PDF', run: () => $('#gradeFile').click() },
-    { id: 'plan', icon: '📚', title: 'הוסף מערכת מומלצת', must: true,
+    { id: 'plan', icon: '📚', title: 'קטלוג פקולטה', must: true,
       text: 'התוכנית המומלצת של המסלול שלך, לפי השנה שבה התחלת: מובנית (הנדסת מכונות), מחוברת הפקולטה בעזרת AI, מקובץ שחבר שיתף, או הסדר שלך.',
       done: !!st.planId, btn: 'בחר תוכנית', run: () => openPlanPicker() },
     { id: 'year', icon: '🗓️', title: 'שנת התחלה', must: true,
