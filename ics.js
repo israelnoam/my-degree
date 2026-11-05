@@ -208,8 +208,7 @@ const ICS_COLORS = ['#8b7cf6', '#f59e0b', '#10b981', '#ef4444', '#3b82f6', '#ec4
 function icsSection() {
   const feeds = icsFeeds();
   return `
-    <section class="panel narrow" id="icsSection">
-      <h2>🔗 יומנים לפי קישור (Apple, Outlook ועוד)</h2>
+    <details class="set-sub" id="icsSection"><summary>🔗 יומנים לפי קישור (Apple, Outlook ועוד)${feeds.length ? ` <small class="muted">· ${feeds.length}</small>` : ''}</summary>
       <p class="muted">כל יומן שיש לו קישור מנוי (ICS / webcal) מופיע במערכת השעות, לקריאה בלבד. מתעדכן כל רבע שעה כשהאפליקציה פתוחה.</p>
       ${icsAvailable() ? '' : '<p class="warn">⚠️ יומנים לפי קישור עובדים רק בכתובת החדשה של האפליקציה (Vercel).</p>'}
       ${feeds.length ? `<div class="list-map">${feeds.map(f => `
@@ -231,7 +230,7 @@ function icsSection() {
           <li><b>Google:</b> עדיף להתחבר עם Google (יש כפתור למעלה). אפשר גם: הגדרות היומן ← "כתובת סודית בפורמט iCal".</li>
         </ol>
       </details>
-    </section>`;
+    </details>`;
 }
 
 function bindIcsSection(root) {

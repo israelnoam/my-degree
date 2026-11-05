@@ -1,6 +1,6 @@
 // Offline support: app shell is cached; network-first so updates show up right away.
 // Bump VERSION together with the ?v= in index.html on every release.
-const VERSION = 27;
+const VERSION = 28;
 const CACHE = 'planner-v' + VERSION;
 const SHELL = [
   './', 'index.html', 'privacy.html', 'manifest.webmanifest',

@@ -202,3 +202,21 @@ table.cmp th, table.cmp td { padding: 7px 8px; border-bottom: 1px solid var(--li
 .plan-card.on { border-color: var(--accent); background: var(--accent-soft); }
 .plan-sem { margin-bottom: 8px; }
 .plan-sem > b { display: block; margin: 6px 0 2px; color: var(--accent); }
+
+/* ---------- settings: grouped, collapsible sub-sections ---------- */
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0 12px; }
+@media (max-width: 640px) { .grid3 { grid-template-columns: 1fr 1fr; } }
+.set-row { display: flex; flex-wrap: wrap; gap: 6px 28px; }
+.set-row .field { margin: 6px 0 0; }
+.set-sub { border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin-top: 10px; }
+.set-sub > summary { color: var(--text); font-weight: 700; list-style: none; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.set-sub > summary::-webkit-details-marker { display: none; }
+.set-sub > summary::after { content: '▾'; margin-inline-start: auto; color: var(--muted); transition: transform .2s; }
+.set-sub[open] > summary::after { transform: rotate(180deg); }
+.set-sub[open] > summary { margin-bottom: 8px; }
+.set-sub small { font-weight: 500; }
+.set-sub h2 { font-size: 1rem; }
+.set-sub.open-box > b { display: block; margin-bottom: 6px; }
+
+/* ---------- app name in the header ---------- */
+.brand span { font-family: system-ui, -apple-system, "Segoe UI", "Rubik", "Heebo", Arial, sans-serif; font-weight: 800; font-size: 1.45rem; letter-spacing: -.01em; }

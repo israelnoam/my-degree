@@ -935,8 +935,7 @@ function installGuide() {
   const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
   const open = k => device === k ? 'open' : '';
   return `
-    <section class="panel narrow" id="install">
-      <h2>📲 פתיחה בטלפון, באייפד ובמחשב</h2>
+    <details class="set-sub" id="install"><summary>📲 פתיחה בטלפון, באייפד ובמחשב${standalone ? ' <small class="good">✓ מותקנת כאן</small>' : ''}</summary>
       ${standalone ? '<p class="good">✓ האפליקציה מותקנת במכשיר הזה.</p>' : ''}
       <div class="install-top">
         <div class="qr-box"><div id="appQr" class="qr" aria-label="קוד QR לכתובת האפליקציה"></div><small class="muted">סרוק עם המצלמה של הטלפון</small></div>
@@ -975,7 +974,7 @@ function installGuide() {
         </ol>
       </details>
       <p class="muted">חיבור ל-Google עושים פעם אחת בכל מכשיר. אחרי זה הנתונים מסתנכרנים לבד פעם ביום, או מיד בלחיצה על כפתור הסנכרון למעלה.</p>
-    </section>`;
+    </details>`;
 }
 
 function bindInstallGuide(root) {
@@ -1015,12 +1014,12 @@ function googleSection(st) {
   const missing = ['calendar', 'tasks'].filter(s => !Sync.hasScope(s));
   if (missing.length && Sync.token()) {
     return `
-    <section class="panel narrow">
-      <h2>📅 Google Calendar ו-Google Tasks</h2>
+    <div class="set-sub open-box">
+      <b>📅 Google Calendar ו-Google Tasks</b>
       <p>כדי להציג את היומן במערכת השעות ולסנכרן משימות, צריך לאשר הרשאות חדשות פעם אחת.</p>
       <p class="muted">לפני כן ודא שב-Google Cloud Console הפעלת את <b>Google Calendar API</b> ואת <b>Google Tasks API</b> (APIs &amp; Services → Library).</p>
       <button class="btn primary" id="grantMore">🔓 אשר גישה ליומן ולמשימות</button>
-    </section>`;
+    </div>`;
   }
   const cals = GCal.calendars;
   const chosen = Array.isArray(st.calendarIds) ? st.calendarIds : [];
@@ -1034,8 +1033,7 @@ function googleSection(st) {
     courses().map(c => `<option value="${esc(c.code)}" ${sel === c.code ? 'selected' : ''}>${esc(c.name)}</option>`).join('');
 
   return `
-    <section class="panel narrow">
-      <h2>📅 היומן במערכת השעות</h2>
+    <details class="set-sub"><summary>📅 Google Calendar <small class="muted">${chosen.length ? `· ${chosen.length} יומנים נבחרו` : '· כמו ב-Google Calendar'}</small></summary>
       <p class="muted">מערכת השעות מציגה אירועים מהיומנים המסומנים (עד שתבחר, אלה שמופעלים אצלך ב-Google Calendar), ומהצבעים שבחרת. קריאה בלבד.</p>
       ${GCal.lastError ? errorNote('לא הצלחתי לטעון את היומן', GCal.lastError) : ''}
       <h3>יומנים</h3>
@@ -1053,10 +1051,9 @@ function googleSection(st) {
         </label>`).join('')}</div>` : '<p class="muted">אין אירועים ב-10 השבועות הקרובים ביומנים שנבחרו.</p>')
         : (cals ? '<p class="muted">סורק את היומן…</p>' : '')}
       ${cats ? '<button class="btn" id="rescanCats">🔄 סרוק שוב</button>' : ''}
-    </section>
+    </details>
 
-    <section class="panel narrow">
-      <h2>✅ Google Tasks</h2>
+    <details class="set-sub"><summary>✅ Google Tasks <small class="muted">· ${st.tasksSync !== false ? 'מסונכרן' : 'כבוי'}</small></summary>
       <label class="check"><input type="checkbox" id="tasksSync" ${st.tasksSync !== false ? 'checked' : ''}> סנכרון דו-כיווני של המשימות עם Google Tasks</label>
       <p class="muted">כל רשימה ב-Google Tasks שמשויכת לקורס (לפי השם שלה, או לפי מה שבחרת כאן) מסתנכרנת עם המשימות של אותו קורס. משימות בלי קורס נכנסות לרשימה "${esc(TASKS_LIST_TITLE)}". Google Tasks שומר רק תאריך, בלי שעה.</p>
       ${Sync.hookError ? errorNote('סנכרון המשימות נכשל', Sync.hookError) : ''}
@@ -1065,7 +1062,7 @@ function googleSection(st) {
         : `<div class="list-row"><span>📋 ${esc(l.title)}</span>
             <select class="listPick" data-list="${esc(l.id)}">${courseOpts(l.id in overrides ? overrides[l.id] : (listMap[l.id] || ''))}</select></div>`).join('')}</div>`
         : (Sync.hasScope('tasks') && st.tasksSync !== false && !Sync.hookError ? '<p class="muted">טוען רשימות…</p>' : '')}
-    </section>`;
+    </details>`;
 }
 
 let googleSettingsLoading = false;
@@ -1109,7 +1106,7 @@ function renderSettings(root) {
   const isHttps = location.protocol === 'https:' || location.hostname === 'localhost';
   root.innerHTML = `
     <section class="panel narrow">
-      <div class="perf-head"><h2>☁️ סנכרון עם Google</h2><a class="btn small" href="#install" id="toInstall">📲 איך פותחים בטלפון</a></div>
+      <div class="perf-head"><h2>☁️ חשבון וסנכרון</h2><a class="btn small" href="#install" id="toInstall">📲 איך פותחים בטלפון</a></div>
       <p class="muted">הנתונים נשמרים בתיקייה מוסתרת בגוגל דרייב שלך (רק האפליקציה הזו רואה אותה), ומסתנכרנים בין המחשב, האייפד והטלפון.</p>
       <div class="sync-status" data-state="${Sync.state}">
         <span class="dot"></span><b>${SYNC_LABELS[Sync.state]}</b>
@@ -1140,57 +1137,58 @@ function renderSettings(root) {
       </details>
     </section>
 
-    ${Sync.connected ? googleSection(st) : ''}
-    ${icsSection()}
-
     <section class="panel narrow">
       <h2>🎓 התואר</h2>
       <p>תוכנית: <b>${esc(st.planName || 'הנדסת מכונות (ברירת מחדל)')}</b></p>
       <div class="row wrap"><button class="btn primary" id="setPlan">📚 קטלוג פקולטה / החלף תוכנית</button></div>
-      <div class="grid2">
-        <label>שנת התחלה (סמסטר חורף)<select id="startYear">${Array.from({ length: 9 }, (_, i) => new Date().getFullYear() - 7 + i).map(y => `<option value="${y}" ${y === (st.startYear || 2025) ? 'selected' : ''}>${y}–${y + 1}</option>`).join('')}</select></label>
+      <div class="grid3">
+        <label>שנת התחלה (חורף)<select id="startYear">${Array.from({ length: 9 }, (_, i) => new Date().getFullYear() - 7 + i).map(y => `<option value="${y}" ${y === (st.startYear || 2025) ? 'selected' : ''}>${y}–${y + 1}</option>`).join('')}</select></label>
         <label>סה״כ נק״ז לתואר<input id="totalCredits" type="number" step="0.5" value="${esc(st.totalCredits)}"></label>
         <label>מספר סמסטרים<input id="nSem" type="number" min="1" max="12" value="${esc(st.semesters)}"></label>
       </div>
     </section>
 
     <section class="panel narrow">
-      <h2>🎨 מראה ושפה</h2>
-      <div class="field"><span class="field-label">ערכת צבעים</span>
-        <div class="seg">${[['dark', '🌙 כהה'], ['light', '☀️ בהיר'], ['auto', '🖥️ לפי המכשיר']].map(([v, l]) => `<button type="button" data-theme-pick="${v}" class="${themePref() === v ? 'on' : ''}">${l}</button>`).join('')}</div></div>
-      <div class="field"><span class="field-label">שפה · Language</span>
-        <div class="seg">${[['he', 'עברית'], ['en', 'English']].map(([v, l]) => `<button type="button" data-lang-pick="${v}" class="${LANG === v ? 'on' : ''}">${l}</button>`).join('')}</div></div>
-      <p class="muted">נשמר במכשיר הזה. נתונים רשמיים מהטכניון (שמות קורסים, סילבוסים) נשארים בעברית.</p>
+      <h2>📅 יומן ומשימות</h2>
+      <p class="muted">מה מופיע במערכת השעות, ואיך המשימות מסתנכרנות. לחץ על נושא כדי לפתוח.</p>
+      ${Sync.connected ? googleSection(st) : '<p class="muted">Google Calendar ו-Google Tasks נכנסים אחרי החיבור ל-Google למעלה.</p>'}
+      ${icsSection()}
     </section>
 
     <section class="panel narrow">
-      <h2>❓ עזרה ומידע</h2>
-      <p class="muted">סיור קצר שמראה כל מה שהאפליקציה יודעת לעשות, תשובות על זכויות ונהלים, ויועץ AI שעונה לפי הנתונים שלך.</p>
+      <h2>⚙️ כללי</h2>
+      <div class="set-row">
+        <div class="field"><span class="field-label">ערכת צבעים</span>
+          <div class="seg">${[['dark', '🌙 כהה'], ['light', '☀️ בהיר'], ['auto', '🖥️ לפי המכשיר']].map(([v, l]) => `<button type="button" data-theme-pick="${v}" class="${themePref() === v ? 'on' : ''}">${l}</button>`).join('')}</div></div>
+        <div class="field"><span class="field-label">שפה · Language</span>
+          <div class="seg">${[['he', 'עברית'], ['en', 'English']].map(([v, l]) => `<button type="button" data-lang-pick="${v}" class="${LANG === v ? 'on' : ''}">${l}</button>`).join('')}</div></div>
+      </div>
+
+      <h3>❓ עזרה ושיתוף</h3>
       <div class="row wrap">
-        <button class="btn primary" id="setTour">🧭 סיור באפליקציה</button>
-        <button class="btn" id="setFaq">📖 זכויות ושאלות נפוצות</button>
-        <button class="btn" id="setAdvisor">🤖 יועץ תואר</button>
-        <button class="btn" id="setWelcome">🚀 צעדים ראשונים</button>
+        <button class="btn primary" id="setContact">💬 יצירת קשר / הצעה לשיפור</button>
         <button class="btn" id="setShare">🔗 שלח את האפליקציה לחבר</button>
-        <button class="btn" id="setContact">💬 יצירת קשר / הצעה לשיפור</button>
-        <a class="btn ghost" href="privacy.html" target="_blank" rel="noopener">🔒 מדיניות פרטיות</a>
+        <button class="btn" id="setTour">🧭 סיור באפליקציה</button>
+        <button class="btn" id="setWelcome">🚀 צעדים ראשונים</button>
+        <button class="btn" id="setFaq">📖 זכויות ושאלות נפוצות</button>
+        <a class="btn ghost" href="privacy.html" target="_blank" rel="noopener">🔒 פרטיות</a>
       </div>
-    </section>
 
-    <section class="panel narrow">
-      <h2>💾 גיבוי</h2>
-      <div class="row wrap">
-        <button class="btn" id="exportBtn">⬇️ ייצוא לקובץ</button>
-        <button class="btn" id="importBtn">⬆️ ייבוא מקובץ</button>
-        <button class="btn danger" id="resetCurriculum">אפס לתוכנית ברירת המחדל</button>
-      </div>
-      <p class="muted">איפוס מחזיר את רשימת הקורסים לתוכנית ברירת המחדל של הנדסת מכונות (הציונים והסטטוסים יימחקו; אפשר לבטל מיד אחרי). משימות ומערכת שעות לא נפגעות. להחלפת תוכנית בלי למחוק ציונים: "קטלוג פקולטה" למעלה.</p>
-      ${Sync.connected ? `<div class="row wrap"><button class="btn" id="listBackups">☁️ גיבויים אוטומטיים מ-Drive (7 ימים)</button></div><div id="backupList"></div>` : ''}
-    </section>
+      ${installGuide()}
 
-    ${installGuide()}`;
+      <details class="set-sub" id="backupSec"><summary>💾 גיבוי ושחזור</summary>
+        <div class="row wrap">
+          <button class="btn" id="exportBtn">⬇️ ייצוא לקובץ</button>
+          <button class="btn" id="importBtn">⬆️ ייבוא מקובץ</button>
+          ${Sync.connected ? '<button class="btn" id="listBackups">☁️ גיבויים אוטומטיים מ-Drive (7 ימים)</button>' : ''}
+        </div>
+        <div id="backupList"></div>
+        <div class="row wrap"><button class="btn danger" id="resetCurriculum">אפס לתוכנית ברירת המחדל</button></div>
+        <p class="muted">איפוס מחזיר את רשימת הקורסים לתוכנית ברירת המחדל של הנדסת מכונות (הציונים והסטטוסים יימחקו; אפשר לבטל מיד אחרי). משימות ומערכת שעות לא נפגעות. להחלפת תוכנית בלי למחוק ציונים: "קטלוג פקולטה" למעלה.</p>
+      </details>
+    </section>`;
   bindInstallGuide(root);
-  $('#toInstall', root)?.addEventListener('click', e => { e.preventDefault(); $('#install', root)?.scrollIntoView({ behavior: 'smooth' }); });
+  $('#toInstall', root)?.addEventListener('click', e => { e.preventDefault(); const d = $('#install', root); if (d) { d.open = true; d.scrollIntoView({ behavior: 'smooth' }); } });
 
   const saveClientId = () => { Sync.clientId = $('#clientId').value; };
   $('#clientId').onchange = saveClientId;
@@ -1220,7 +1218,6 @@ function renderSettings(root) {
   $$('[data-lang-pick]', root).forEach(b => b.onclick = () => { if (b.dataset.langPick !== LANG) setLang(b.dataset.langPick); });
   $('#setTour').onclick = () => startTour();
   $('#setFaq').onclick = () => openFaq();
-  $('#setAdvisor').onclick = () => openAdvisor();
   $('#setWelcome').onclick = () => reopenWelcome();
   $('#setShare').onclick = () => shareApp();
   $('#setContact').onclick = () => openFeedback();

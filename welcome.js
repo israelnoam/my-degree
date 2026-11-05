@@ -45,7 +45,7 @@ function welcomeSteps() {
     { id: 'calendar', icon: '📅', title: 'חבר יומן', must: false,
       text: 'Google Calendar נכנס עם החיבור ל-Google. יומן של אפל (iCloud) או Outlook: מוסיפים לפי קישור בהגדרות.',
       done: GCal.googleReady() || icsFeeds().length > 0, skip: 'לא עכשיו',
-      btn: 'להגדרות היומן', run: () => { go('settings'); setTimeout(() => $('#icsSection')?.scrollIntoView({ behavior: 'smooth' }), 150); } },
+      btn: 'להגדרות היומן', run: () => { go('settings'); setTimeout(() => { const d = $('#icsSection'); if (d) { d.open = true; d.scrollIntoView({ behavior: 'smooth' }); } }, 150); } },
     { id: 'ai', icon: '🤖', title: 'מפתח AI (לא חובה)', must: false,
       text: 'ליועץ התואר, לסריקת ההזדמנויות השבועית, לקורות חיים ולבניית תוכנית מחוברת. מפתח אישי שלך מ-Anthropic, נשמר רק במכשיר; צריך להטעין קרדיט בחשבון (שאלה עולה כמה סנטים).',
       done: !!claudeKey(), skip: 'בלי AI', btn: 'הגדר מפתח', run: () => openAdvisor() },
