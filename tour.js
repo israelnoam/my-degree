@@ -149,5 +149,6 @@ function endTour(done) {
 
 // First launch on this device: offer the tour (the first card has a skip button).
 setTimeout(() => {
-  if (!lsGet(TOUR_LS) && !document.querySelector('dialog[open]')) startTour();
+  // A new user gets the welcome checklist instead; the tour is one of its steps.
+  if (!lsGet(TOUR_LS) && !document.querySelector('dialog[open]') && !welcomeVisible()) startTour();
 }, 1200);

@@ -97,6 +97,9 @@ function planGradeImport(parsed) {
 }
 
 function applyGradeImport(plan) {
+  // The first semester on the sheet is semester 1, so it also tells the start year.
+  const firstYear = Math.min(...plan.map(c => c.year).filter(Number.isFinite));
+  Store.put('meta', 'settings', { gradesImportedAt: Date.now(), ...(Number.isFinite(firstYear) ? { startYear: firstYear, startYearConfirmed: true } : {}) });
   for (const c of plan) {
     const base = c.existing || { code: c.appCode, name: c.name, credits: c.credits, prereqs: [], type: 'elective', notes: '' };
     // A binary pass you already marked stays one; the sheet still shows the numeric grade.

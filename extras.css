@@ -178,3 +178,27 @@ table.cmp th, table.cmp td { padding: 7px 8px; border-bottom: 1px solid var(--li
 .wish-item.high .wi-prio { border-color: var(--accent); color: var(--accent); }
 .wi-meta { font-size: .82rem; color: var(--muted); margin: 2px 0 8px; }
 .btn.wish-on { color: var(--accent); border-color: var(--accent); }
+
+/* ---------- welcome checklist ---------- */
+.welcome { border: 1px solid var(--accent); background: linear-gradient(180deg, var(--accent-soft), transparent 60%), var(--panel); }
+.welcome-bar { height: 6px; border-radius: 99px; background: var(--line); overflow: hidden; margin: 4px 0 12px; }
+.welcome-bar i { display: block; height: 100%; background: var(--accent); transition: width .3s; }
+.welcome-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.w-step { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border-radius: 10px; }
+.w-step.next { background: var(--accent-soft); }
+.w-step.done b, .w-step.skipped b { opacity: .6; }
+.w-check { flex: none; width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line); display: grid; place-items: center; font-size: .8rem; font-weight: 700; }
+.w-step.done .w-check { background: var(--green); border-color: var(--green); color: #fff; }
+.w-step.next .w-check { border-color: var(--accent); }
+.w-body { flex: 1; min-width: 0; }
+.w-body p { margin: 4px 0 6px; }
+.w-body select { margin-top: 6px; display: block; }
+.welcome-foot { margin-top: 12px; justify-content: flex-end; }
+.btn.ghost { background: none; border-color: transparent; }
+
+/* ---------- degree plans ---------- */
+.plan-list { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; }
+.plan-card { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; }
+.plan-card.on { border-color: var(--accent); background: var(--accent-soft); }
+.plan-sem { margin-bottom: 8px; }
+.plan-sem > b { display: block; margin: 6px 0 2px; color: var(--accent); }

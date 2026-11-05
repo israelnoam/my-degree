@@ -69,9 +69,12 @@ function ymd(d) {
 
 // ---------- data access ----------
 function seedData() {
+  const fresh = !Object.keys(Store.recs).some(k => k.startsWith('course:'));
   SEED_COURSES.forEach(([sem, code, name, credits, prereqs, type]) =>
     Store.seed('course', code, { code, name, credits, sem, prereqs, type, status: 'none', grade: null, notes: '' }));
-  Store.seed('meta', 'settings', { totalCredits: DEGREE_TOTAL_CREDITS, semesters: SEMESTER_NAMES.length });
+  // A brand-new app starts from the clean curriculum: the one-time data updates
+  // (MIGRATIONS in planner.js) were for an existing plan, so they count as done.
+  Store.seed('meta', 'settings', { totalCredits: DEGREE_TOTAL_CREDITS, semesters: SEMESTER_NAMES.length, ...(fresh ? { migrations: Object.keys(MIGRATIONS) } : {}) });
   Store.persist();
 }
 
@@ -185,7 +188,7 @@ function connectCard() {
   if (!Sync.connected) {
     return `<section class="panel connect-card">
       <div><h2>☁️ חבר את חשבון Google</h2>
-      <p class="muted">לחיצה אחת בכל מכשיר, והציונים, המשימות ומערכת השעות יהיו זהים במחשב, באייפד ובטלפון. גם היומן ו-Google Tasks (כולל מה ש-Instinct מוסיף) יופיעו כאן.</p></div>
+      <p class="muted">לחיצה אחת בכל מכשיר, והציונים, המשימות ומערכת השעות יהיו זהים במחשב, באייפד ובטלפון. גם היומן ו-Google Tasks יופיעו כאן.</p></div>
       <button class="btn primary big" id="connectNow">התחבר עם Google</button>
     </section>`;
   }
@@ -309,7 +312,7 @@ function renderMap(root) {
   if (loose.length) rows.push(semesterRow(0, loose));
 
   root.innerHTML = `
-    ${connectCard()}
+    ${(window.welcomeCard && welcomeCard()) || connectCard()}
     <section class="panel map-panel">
         <div class="toolbar">
           <div class="legend">
@@ -327,6 +330,7 @@ function renderMap(root) {
   $('#addCourse').onclick = () => editCourse(null);
   $('#gradeSheetBtn').onclick = () => $('#gradeFile').click();
   bindConnectCard(root);
+  window.bindWelcome?.(root); // welcome.js loads after the first render
   $$('.course', root).forEach(el => {
     el.onclick = () => editCourse(el.dataset.code);
     el.onmouseenter = () => highlightChain(el.dataset.code, true);
@@ -942,6 +946,7 @@ function installGuide() {
           <div class="row wrap">
             <button class="btn" id="copyUrl">📋 העתק קישור</button>
             <a class="btn" id="waUrl" href="https://wa.me/?text=${encodeURIComponent(APP_URL)}" target="_blank" rel="noopener">💬 שלח לעצמי בוואטסאפ</a>
+            <button class="btn" id="friendUrl">🔗 שלח לחבר (אפליקציה משלו)</button>
             ${navigator.share ? '<button class="btn" id="shareUrl">↗️ שתף</button>' : ''}
           </div>
         </div>
@@ -953,7 +958,7 @@ function installGuide() {
           <li>לחץ על כפתור השיתוף <b>⬆️</b> בתחתית המסך.</li>
           <li>גלול ובחר <b>"הוסף למסך הבית"</b> ← <b>"הוסף"</b>.</li>
           <li>פתח את האפליקציה <b>מהאייקון במסך הבית</b> (לא מ-Safari): כך היא נפתחת במסך מלא ושומרת את החיבור.</li>
-          <li>במפת הקורסים לחץ <b>"התחבר עם Google"</b>, בחר את החשבון שלך ואשר. אם מופיע "Google hasn't verified this app": Advanced ← Go to israelnoam.github.io.</li>
+          <li>במפת הקורסים לחץ <b>"התחבר עם Google"</b>, בחר את החשבון שלך ואשר. אם מופיע "Google hasn't verified this app": Advanced ← Go to ${esc(location.host)}.</li>
         </ol>
       </details>
       <details class="install-step" ${open('android')}><summary>🤖 אנדרואיד</summary>
@@ -975,6 +980,7 @@ function installGuide() {
 
 function bindInstallGuide(root) {
   $('#copyUrl', root)?.addEventListener('click', () => navigator.clipboard.writeText(APP_URL).then(() => toast('הקישור הועתק')).catch(() => prompt('העתק את הקישור:', APP_URL)));
+  $('#friendUrl', root)?.addEventListener('click', () => shareApp());
   $('#shareUrl', root)?.addEventListener('click', () => navigator.share({ title: 'התואר שלי', url: APP_URL }).catch(() => {}));
   const box = $('#appQr', root);
   if (!box) return;
@@ -1030,7 +1036,7 @@ function googleSection(st) {
   return `
     <section class="panel narrow">
       <h2>📅 היומן במערכת השעות</h2>
-      <p class="muted">מערכת השעות מציגה אירועים מהיומנים המסומנים, רק מהקטגוריות (צבעים) שבחרת. קריאה בלבד.</p>
+      <p class="muted">מערכת השעות מציגה אירועים מהיומנים המסומנים (עד שתבחר, אלה שמופעלים אצלך ב-Google Calendar), ומהצבעים שבחרת. קריאה בלבד.</p>
       ${GCal.lastError ? errorNote('לא הצלחתי לטעון את היומן', GCal.lastError) : ''}
       <h3>יומנים</h3>
       ${cals ? `<div class="cal-picks">${cals.map(c => `
@@ -1038,9 +1044,9 @@ function googleSection(st) {
         <span class="ev-dot" style="--ev:${esc(c.color)}"></span>${esc(c.summary)}${c.primary ? ' <small class="muted">(ראשי)</small>' : ''}</label>`).join('')}</div>`
         : `<p class="muted">טוען יומנים…</p>`}
       <h3>קטגוריות לפי צבע</h3>
-      <p class="muted">Instinct צובע כל אירוע לפי הקטגוריה שלו. סמן את צבעי הלימודים.</p>
+      <p class="muted">אם אתה צובע אירועים לפי סוג (לימודים, אישי…), אפשר להציג רק חלק מהצבעים. בהתחלה הכול מוצג.</p>
       ${cats ? (cats.length ? `<div class="cat-picks">${cats.map(c => `
-        <label class="cat-pick"><input type="checkbox" class="catPick" value="${esc(c.key)}" ${(Array.isArray(shown) ? shown.includes(c.key) : c.study) ? 'checked' : ''}>
+        <label class="cat-pick"><input type="checkbox" class="catPick" value="${esc(c.key)}" ${(Array.isArray(shown) ? shown.includes(c.key) : true) ? 'checked' : ''}>
           <span class="ev-dot big" style="--ev:${esc(c.color)}"></span>
           <span class="cat-info"><b>${c.count} אירועים${multiCal ? ` · ${esc(c.calendar)}` : ''}${c.study ? ' <span class="badge">📚 נראה כמו לימודים</span>' : ''}</b>
           <small>${c.samples.map(esc).join(' · ')}</small></span>
@@ -1052,7 +1058,7 @@ function googleSection(st) {
     <section class="panel narrow">
       <h2>✅ Google Tasks</h2>
       <label class="check"><input type="checkbox" id="tasksSync" ${st.tasksSync !== false ? 'checked' : ''}> סנכרון דו-כיווני של המשימות עם Google Tasks</label>
-      <p class="muted">כל רשימה ב-Google Tasks שמשויכת לקורס (כמו הרשימות ש-Instinct יצר) מסתנכרנת עם המשימות של אותו קורס. משימות בלי קורס נכנסות לרשימה "${esc(TASKS_LIST_TITLE)}". Google Tasks שומר רק תאריך, בלי שעה.</p>
+      <p class="muted">כל רשימה ב-Google Tasks שמשויכת לקורס (לפי השם שלה, או לפי מה שבחרת כאן) מסתנכרנת עם המשימות של אותו קורס. משימות בלי קורס נכנסות לרשימה "${esc(TASKS_LIST_TITLE)}". Google Tasks שומר רק תאריך, בלי שעה.</p>
       ${Sync.hookError ? errorNote('סנכרון המשימות נכשל', Sync.hookError) : ''}
       ${lists ? `<div class="list-map">${lists.map(l => l.id === st.tasksListId
         ? `<div class="list-row"><span>📋 ${esc(l.title)}</span><small class="muted">משימות בלי קורס</small></div>`
@@ -1078,6 +1084,7 @@ function bindGoogleSection(root) {
     Promise.all(jobs).finally(() => { googleSettingsLoading = false; rerender(); });
   }
 
+  bindIcsSection(root);
   const resetCalendar = () => { GCal.weeks = {}; GCal.fetchedAt = {}; };
   $$('.calPick', root).forEach(cb => cb.onchange = () => {
     Store.put('meta', 'settings', { calendarIds: $$('.calPick:checked', root).map(x => x.value) });
@@ -1134,10 +1141,14 @@ function renderSettings(root) {
     </section>
 
     ${Sync.connected ? googleSection(st) : ''}
+    ${icsSection()}
 
     <section class="panel narrow">
       <h2>🎓 התואר</h2>
+      <p>תוכנית: <b>${esc(st.planName || 'הנדסת מכונות (ברירת מחדל)')}</b></p>
+      <div class="row wrap"><button class="btn primary" id="setPlan">📚 הוסף מערכת מומלצת / החלף תוכנית</button></div>
       <div class="grid2">
+        <label>שנת התחלה (סמסטר חורף)<select id="startYear">${Array.from({ length: 9 }, (_, i) => new Date().getFullYear() - 7 + i).map(y => `<option value="${y}" ${y === (st.startYear || 2025) ? 'selected' : ''}>${y}–${y + 1}</option>`).join('')}</select></label>
         <label>סה״כ נק״ז לתואר<input id="totalCredits" type="number" step="0.5" value="${esc(st.totalCredits)}"></label>
         <label>מספר סמסטרים<input id="nSem" type="number" min="1" max="12" value="${esc(st.semesters)}"></label>
       </div>
@@ -1159,6 +1170,9 @@ function renderSettings(root) {
         <button class="btn primary" id="setTour">🧭 סיור באפליקציה</button>
         <button class="btn" id="setFaq">📖 זכויות ושאלות נפוצות</button>
         <button class="btn" id="setAdvisor">🤖 יועץ תואר</button>
+        <button class="btn" id="setWelcome">🚀 צעדים ראשונים</button>
+        <button class="btn" id="setShare">🔗 שלח את האפליקציה לחבר</button>
+        <a class="btn ghost" href="privacy.html" target="_blank" rel="noopener">🔒 מדיניות פרטיות</a>
       </div>
     </section>
 
@@ -1167,9 +1181,9 @@ function renderSettings(root) {
       <div class="row wrap">
         <button class="btn" id="exportBtn">⬇️ ייצוא לקובץ</button>
         <button class="btn" id="importBtn">⬆️ ייבוא מקובץ</button>
-        <button class="btn danger" id="resetCurriculum">אפס תוכנית לימודים</button>
+        <button class="btn danger" id="resetCurriculum">אפס לתוכנית ברירת המחדל</button>
       </div>
-      <p class="muted">איפוס מחזיר את רשימת הקורסים לתוכנית ברירת המחדל (הציונים והסטטוסים יימחקו; אפשר לבטל מיד אחרי). משימות ומערכת שעות לא נפגעות.</p>
+      <p class="muted">איפוס מחזיר את רשימת הקורסים לתוכנית ברירת המחדל של הנדסת מכונות (הציונים והסטטוסים יימחקו; אפשר לבטל מיד אחרי). משימות ומערכת שעות לא נפגעות. להחלפת תוכנית בלי למחוק ציונים: "הוסף מערכת מומלצת" למעלה.</p>
       ${Sync.connected ? `<div class="row wrap"><button class="btn" id="listBackups">☁️ גיבויים אוטומטיים מ-Drive (7 ימים)</button></div><div id="backupList"></div>` : ''}
     </section>
 
@@ -1206,6 +1220,10 @@ function renderSettings(root) {
   $('#setTour').onclick = () => startTour();
   $('#setFaq').onclick = () => openFaq();
   $('#setAdvisor').onclick = () => openAdvisor();
+  $('#setWelcome').onclick = () => reopenWelcome();
+  $('#setShare').onclick = () => shareApp();
+  $('#setPlan').onclick = () => openPlanPicker();
+  $('#startYear').onchange = e => { Store.put('meta', 'settings', { startYear: +e.target.value, startYearConfirmed: true }); Sync.schedule(500); };
   $('#resetCurriculum').onclick = () => {
     if (!confirm('לאפס את כל הקורסים לתוכנית ברירת המחדל?')) return;
     const snaps = snapshot(courses().map(c => `course:${c.code}`));
@@ -1278,6 +1296,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (state !== 'syncing') shownTaskError = Sync.hookError?.message;
   });
   try { currentView = localStorage.getItem('pp_view') || 'map'; } catch {}
+  if (welcomeParam) currentView = 'map';
   if (!$(`#tabs [data-view="${currentView}"]`) && !['performance', 'settings'].includes(currentView)) currentView = 'map';
   go(currentView);
   Sync.start();

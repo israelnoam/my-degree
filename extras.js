@@ -445,7 +445,7 @@ async function openNotifications() {
       ${d.exams.length ? d.exams.map(x => `<div class="notif-row"><span class="grow">${esc(x.t.title)}</span><small>${dueLabel(x.days)}</small></div>`).join('') : '<p class="muted">אין מבחנים קרובים.</p>'}</div>
     <div class="notif-sec"><h3>⏰ תזכורת 10 דקות לפני שיעור</h3>
       <label class="check"><input type="checkbox" id="notifToggle" ${enabled ? 'checked' : ''} ${window.Notification ? '' : 'disabled'}> התראה במכשיר הזה</label>
-      <p class="muted">עובדת רק כשהאפליקציה פתוחה (דפדפן או PWA פתוחים ברקע). להתראות כשהאפליקציה סגורה השתמש ב-Instinct ב-WhatsApp.</p></div>
+      <p class="muted">עובדת רק כשהאפליקציה פתוחה (דפדפן או PWA פתוחים ברקע). להתראות כשהאפליקציה סגורה, הוסף את המשימות ל-Google Tasks או ליומן.</p></div>
     ${closeBtn}`, form => {
     $$('[data-task]', form).forEach(r => r.onclick = () => { $('#modal').close(); setTimeout(() => editTask(r.dataset.task), 30); });
     $$('[data-course]', form).forEach(r => r.onclick = () => { $('#modal').close(); setTimeout(() => editCourse(r.dataset.course), 30); });
@@ -531,6 +531,9 @@ function openPalette() {
     { icon: '⭐', label: 'רשימת משאלות', hint: 'מעבר למסך', run: () => { plannerTab = 'wish'; go('planner'); } },
     { icon: '🤖', label: 'יועץ תואר (AI)', hint: 'שאל על התואר שלך', run: () => openAdvisor() },
     { icon: '🧭', label: 'סיור באפליקציה', hint: 'מדריך', run: () => startTour() },
+    { icon: '🚀', label: 'צעדים ראשונים', hint: 'רשימת התחלה', run: () => reopenWelcome() },
+    { icon: '📚', label: 'הוסף מערכת מומלצת', hint: 'תוכנית לימודים', run: () => openPlanPicker() },
+    { icon: '🔗', label: 'שלח את האפליקציה לחבר', hint: 'קישור', run: () => shareApp() },
     { icon: '⚙️', label: 'הגדרות', hint: 'מעבר למסך', run: () => go('settings') },
   ];
   const search = q => {

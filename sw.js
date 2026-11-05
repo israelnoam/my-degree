@@ -1,10 +1,10 @@
 // Offline support: app shell is cached; network-first so updates show up right away.
 // Bump VERSION together with the ?v= in index.html on every release.
-const VERSION = 22;
+const VERSION = 23;
 const CACHE = 'planner-v' + VERSION;
 const SHELL = [
-  './', 'index.html', 'manifest.webmanifest',
-  ...['prefs.js', 'styles.css', 'app.js', 'google.js', 'grades.js', 'store.js', 'data.js', 'catalog.js', 'cheesefork.js', 'planner.js', 'wishlist.js', 'stats.js', 'cv.js', 'extras.js', 'advisor.js', 'tour.js', 'radar.js', 'i18n.js', 'extras.css'].map(f => `${f}?v=${VERSION}`),
+  './', 'index.html', 'privacy.html', 'manifest.webmanifest',
+  ...['prefs.js', 'styles.css', 'app.js', 'google.js', 'ics.js', 'grades.js', 'store.js', 'data.js', 'catalog.js', 'cheesefork.js', 'planner.js', 'wishlist.js', 'stats.js', 'cv.js', 'extras.js', 'advisor.js', 'plans.js', 'welcome.js', 'tour.js', 'radar.js', 'i18n.js', 'extras.css'].map(f => `${f}?v=${VERSION}`),
   'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-180.png',
 ];
 
@@ -24,6 +24,7 @@ self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   // Only handle our own files; Google API calls go straight to the network.
   if (e.request.method !== 'GET' || url.origin !== location.origin) return;
+  if (url.pathname.includes('/api/')) return; // server functions (calendar links) are never cached
   const fromCache = () => caches.match(e.request, { ignoreSearch: true }).then(r => r || caches.match('index.html'));
   // 'no-cache' skips GitHub Pages' ~10 minute browser cache, so a release shows up at once.
   const network = fetch(e.request, { cache: 'no-cache' }).then(res => {

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>התואר שלי · מדיניות פרטיות</title>
+<style>
+  :root { --bg: #0b1220; --panel: #121b2e; --text: #e8edf7; --muted: #9aa7bd; --accent: #f5b83d; --line: #24314d; }
+  @media (prefers-color-scheme: light) { :root { --bg: #f6f7fb; --panel: #fff; --text: #172036; --muted: #5b6780; --accent: #b77600; --line: #dfe4ee; } }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Arial, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 24px 16px 60px; }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; margin: 16px 0; }
+  h1 { font-size: 1.6rem; margin: 8px 0 0; } h2 { font-size: 1.15rem; color: var(--accent); margin: 0 0 8px; }
+  p, li { color: var(--text); } .muted { color: var(--muted); } a { color: var(--accent); }
+  code { direction: ltr; unicode-bidi: embed; font-size: .9em; }
+  [lang="en"] { direction: ltr; text-align: left; }
+</style>
+</head>
+<body>
+<main>
+  <p><a href="./">→ חזרה לאפליקציה</a></p>
+  <h1>🔒 מדיניות פרטיות · "התואר שלי"</h1>
+  <p class="muted">עודכן: נובמבר 2026</p>
+
+  <section>
+    <h2>בקצרה</h2>
+    <p>"התואר שלי" היא אפליקציית רשת לתכנון תואר בטכניון. <b>אין לה שרת שמחזיק את הנתונים שלך ואין לה מסד נתונים משותף.</b> כל משתמש רואה רק את הנתונים שלו: הם נשמרים בדפדפן שלו ובתיקייה מוסתרת בגוגל דרייב <b>שלו</b>. בעל האפליקציה ומשתמשים אחרים לא יכולים לראות אותם.</p>
+  </section>
+
+  <section>
+    <h2>איזה מידע נשמר ואיפה</h2>
+    <ul>
+      <li><b>הקורסים, הציונים, המשימות, מערכת השעות, קורות החיים וההגדרות</b> שאתה מכניס: בזיכרון של הדפדפן במכשיר שלך, ואם התחברת עם Google, גם בקובץ בתיקיית האפליקציה המוסתרת (<code>appDataFolder</code>) בגוגל דרייב שלך, כדי לסנכרן בין המכשירים שלך.</li>
+      <li><b>גיליון הציונים (PDF)</b> נקרא בתוך הדפדפן בלבד. הקובץ עצמו לא נשלח לשום מקום; רק הקורסים והציונים שבו נשמרים כמו שתואר למעלה.</li>
+      <li><b>מפתח AI (Anthropic)</b>, אם הכנסת: נשמר רק במכשיר שבו הכנסת אותו, ולא מסתנכרן.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>הרשאות Google ולמה הן נחוצות</h2>
+    <ul>
+      <li><code>drive.appdata</code>: לשמור ולקרוא את קובץ הנתונים של האפליקציה בתיקייה המוסתרת שלה בדרייב שלך. האפליקציה <b>לא</b> רואה שום קובץ אחר בדרייב.</li>
+      <li><code>calendar.readonly</code>: להציג את האירועים מהיומנים שלך במערכת השעות. קריאה בלבד: האפליקציה לא יוצרת, משנה או מוחקת אירועים.</li>
+      <li><code>tasks</code>: סנכרון דו-כיווני של המשימות שלך עם Google Tasks (יצירה, עדכון וסימון משימות שאתה מנהל באפליקציה).</li>
+    </ul>
+    <p>הגישה נעשית ישירות מהדפדפן שלך אל Google. הנתונים מ-Google משמשים רק להצגת התכונות האלה לך, לא נמכרים, לא משמשים לפרסום, ולא מועברים לאף אחד.</p>
+    <p>השימוש של האפליקציה במידע שמתקבל מ-Google APIs עומד ב-<a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Google API Services User Data Policy</a>, כולל דרישות ה-Limited Use.</p>
+  </section>
+
+  <section>
+    <h2>שירותים חיצוניים</h2>
+    <ul>
+      <li><b>יומנים לפי קישור (Apple / Outlook):</b> הקישור שאתה מוסיף נשמר בנתונים שלך. כדי לקרוא אותו, שרת האפליקציה מוריד את קובץ היומן ומעביר אותו ישר לדפדפן שלך, בלי לשמור אותו.</li>
+      <li><b>AI (Claude של Anthropic):</b> רק כשאתה משתמש בתכונת AI (יועץ, קורות חיים, בניית תוכנית מחוברת, סריקת הזדמנויות), הנתונים הרלוונטיים נשלחים ישירות מהדפדפן ל-Anthropic עם המפתח שלך, לפי <a href="https://www.anthropic.com/legal/privacy" target="_blank" rel="noopener">מדיניות הפרטיות של Anthropic</a>.</li>
+      <li><b>CheeseFork ואתרי הטכניון:</b> מידע ציבורי על קורסים ומערכות נטען משם. לא נשלח אליהם מידע אישי.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>מחיקת המידע</h2>
+    <ul>
+      <li>בהגדרות האפליקציה: "התנתק" מבטל את החיבור ל-Google במכשיר.</li>
+      <li>למחיקת הנתונים מהדרייב: <a href="https://drive.google.com/drive/settings" target="_blank" rel="noopener">הגדרות Google Drive</a> ← ניהול אפליקציות ← "התואר שלי" ← מחיקת נתוני אפליקציה מוסתרים.</li>
+      <li>לביטול ההרשאות: <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">myaccount.google.com/permissions</a>.</li>
+      <li>למחיקה מהמכשיר: ניקוי נתוני האתר בדפדפן.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>יצירת קשר</h2>
+    <p>שאלות או בקשות: דרך <a href="https://github.com/israelnoam/my-degree/issues" target="_blank" rel="noopener">דף הפרויקט ב-GitHub</a>.</p>
+  </section>
+
+  <section lang="en">
+    <h2>English summary</h2>
+    <p>"My Degree" is a web app for planning a Technion degree. It has no backend database: each user's data stays in their own browser and in the hidden app folder (<code>drive.appdata</code>) of their own Google Drive, so no one else, including the app's owner, can see it.</p>
+    <p>Google scopes: <code>drive.appdata</code> (store the app's own data file), <code>calendar.readonly</code> (show your events in the timetable, read-only), <code>tasks</code> (two-way sync of your tasks). Google user data is used only to provide these features to you, is never sold, never used for advertising, and never transferred to others. The app's use of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
+    <p>Calendar links (ICS) are fetched by a pass-through server function that stores nothing. AI features send the relevant data straight from your browser to Anthropic, using your own API key, only when you use them. Grade-sheet PDFs are read in the browser and never uploaded.</p>
+    <p>Delete your data: disconnect in Settings, delete the app's hidden data in Google Drive settings → Manage apps, and revoke access at myaccount.google.com/permissions. Contact: the project's GitHub issues page.</p>
+  </section>
+</main>
+</body>
+</html>

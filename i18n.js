@@ -361,6 +361,56 @@ const EN = {
   'תוכנות: SolidWorks, MATLAB, Python\nייצור: CNC, הדפסת תלת-ממד': 'Software: SolidWorks, MATLAB, Python\nManufacturing: CNC, 3D printing',
   'עברית – שפת אם\nאנגלית – רמה גבוהה': 'Hebrew – native\nEnglish – fluent',
   'אותות שנצברו': 'Honors earned', 'עוד לא בתוכנית': 'not in the plan yet', 'דרישות הפקולטה': 'Faculty requirements', 'סה״כ': 'Total',
+
+  // welcome checklist
+  'צעדים ראשונים': 'First steps', '🚀 צעדים ראשונים': '🚀 First steps', 'רשימת התחלה': 'Getting started', '(רשות)': '(optional)',
+  'ייבא גיליון ציונים': 'Import your grade sheet', 'הוסף מערכת מומלצת': 'Add a recommended plan', 'שנת התחלה': 'Start year',
+  'חבר יומן': 'Connect a calendar', 'מפתח AI (לא חובה)': 'AI key (optional)', 'סיור קצר באפליקציה': 'A short tour of the app',
+  'בחר קובץ PDF': 'Choose a PDF', 'בחר תוכנית': 'Choose a plan', 'אישור': 'Confirm', 'להגדרות היומן': 'Calendar settings', 'הגדר מפתח': 'Set up a key', 'התחל סיור': 'Start the tour',
+  'אין לי עדיין ציונים': 'I have no grades yet', 'לא עכשיו': 'Not now', 'בלי AI': 'No AI', 'דלג': 'Skip', 'הסתר': 'Hide',
+  'פורטל הסטודנטים': 'the student portal', '🔒 פרטיות': '🔒 Privacy', '🔒 מדיניות פרטיות': '🔒 Privacy policy',
+  '🔗 שלח את האפליקציה לחבר': '🔗 Send the app to a friend', 'שלח את האפליקציה לחבר': 'Send the app to a friend', '🔗 שלח לחבר (אפליקציה משלו)': '🔗 Send to a friend (their own app)',
+  '🎉 הכול מוכן! אפשר לחזור לכאן מההגדרות בכל רגע.': '🎉 All set! You can come back here from Settings any time.',
+  'אפשר לפתוח את הצעדים הראשונים שוב מההגדרות': 'You can open First steps again from Settings', 'קישור': 'Link',
+  'הקישור הועתק: שלח אותו לחבר': 'Link copied: send it to a friend',
+  'כך הנתונים שלך נשמרים בגוגל דרייב שלך (בתיקייה מוסתרת שרק האפליקציה רואה) ומסתנכרנים בין הטלפון, האייפד והמחשב. אף אחד אחר לא רואה אותם.': 'Your data is saved in your own Google Drive (in a hidden folder only this app can see) and syncs between your phone, iPad and computer. No one else can see it.',
+  '← גיליון ציונים ← הורד PDF, ובחר אותו כאן. הקורסים, הציונים, הסמסטרים ושנת ההתחלה ייכנסו לבד.': '→ grade sheet → download the PDF, and choose it here. Courses, grades, semesters and your start year come in by themselves.',
+  'התוכנית המומלצת של המסלול שלך, לפי השנה שבה התחלת: מובנית (הנדסת מכונות), מחוברת הפקולטה בעזרת AI, מקובץ שחבר שיתף, או הסדר שלך.': 'The recommended plan of your track, for the year you started: built in (Mechanical Engineering), from the faculty booklet with AI, from a file a friend shared, or your own order.',
+  'באיזו שנה התחלת את התואר? לפי זה נקבעים שמות הסמסטרים והמערכות מ-CheeseFork.': 'Which year did you start your degree? Semester names and CheeseFork schedules follow it.',
+  'Google Calendar נכנס עם החיבור ל-Google. יומן של אפל (iCloud) או Outlook: מוסיפים לפי קישור בהגדרות.': 'Google Calendar comes in when you connect Google. Apple (iCloud) or Outlook calendars: add them by link in Settings.',
+  'ליועץ התואר, לסריקת ההזדמנויות השבועית, לקורות חיים ולבניית תוכנית מחוברת. מפתח אישי שלך מ-Anthropic, נשמר רק במכשיר; צריך להטעין קרדיט בחשבון (שאלה עולה כמה סנטים).': 'For the degree advisor, the weekly opportunity scan, the CV and building a plan from a booklet. Your own Anthropic key, stored only on this device; your account needs credit (a question costs a few cents).',
+  'דקה וחצי שמראה איפה הכול.': 'A minute and a half showing where everything is.',
+
+  // degree plans
+  '📚 הוסף מערכת מומלצת': '📚 Add a recommended plan', '📚 הוסף מערכת מומלצת / החלף תוכנית': '📚 Add a recommended plan / switch plan', 'תוכנית לימודים': 'Study plan',
+  'בחר את התוכנית המומלצת של המסלול שלך. הקורסים שלה ייכנסו לסמסטרים במפה. קורסים שכבר עשית, לוקח עכשיו או כתבת עליהם הערה לא ישתנו, וגם קורסי בחירה שהוספת נשארים.': 'Choose the recommended plan of your track. Its courses go into the semesters on the map. Courses you finished, are taking or wrote a note on stay as they are, and so do electives you added.',
+  'התוכנית שלך': 'your plan', 'מובנית': 'built in', 'בחר': 'Choose', '⬇️ קובץ': '⬇️ File', 'שמור כקובץ כדי לשתף': 'Save as a file to share', 'מחק': 'Delete',
+  '📄 מחוברת הפקולטה (PDF) בעזרת AI': '📄 From the faculty booklet (PDF) with AI', 'קובץ החוברת (PDF)': 'Booklet file (PDF)', '🤖 בנה תוכנית מהחוברת': '🤖 Build a plan from the booklet', '🔑 הגדר מפתח AI': '🔑 Set up an AI key',
+  '📁 מקובץ תוכנית ששיתפו איתך': '📁 From a plan file someone shared', '✍️ הסדר שלי': '✍️ My own order', '💾 שמור את הסדר שלי כתוכנית': '💾 Save my order as a plan', '✓ הסדר הנוכחי הוא התוכנית שלי': '✓ My current order is my plan',
+  'חבר מאותו מסלול יכול ללחוץ "⬇️ קובץ" ליד תוכנית (או "שמור את הסדר שלי") ולשלוח לך את הקובץ.': 'A friend on the same track can press "⬇️ File" next to a plan (or "Save my order") and send you the file.',
+  'לוקח את הקורסים בסדר אחר מהמומלץ? סדר אותם במפה (גרירה או "סמסטר" בכל קורס), ואז שמור את הסדר כתוכנית כדי לשתף או לחזור אליה. נשמרים רק קורסים וסמסטרים, בלי ציונים.': 'Taking courses in a different order? Arrange them on the map (drag, or "semester" on each course), then save the order as a plan to share or come back to. Only courses and semesters are saved, never grades.',
+  'טען את התוכנית': 'Load the plan', 'חזרה': 'Back', 'חדש': 'new', 'יזוז': 'moves', 'בחירה / לא משובץ': 'Elective / unplaced',
+  'אפשר לבטל מיד אחרי. כדאי לבדוק מול חוברת הפקולטה: התוכנית המומלצת היא המלצה, וקורסים זזים בין שנים.': 'You can undo right after. Check it against the faculty booklet: the recommended plan is a recommendation, and courses move between years.',
+  'מעולה: התוכנית שלך היא הסדר שבמפה': 'Great: your plan is the order on the map', 'הסדר שלי': 'My own order', 'שם לתוכנית:': 'Plan name:',
+  'נשמר. הקובץ ירד, ואפשר לשלוח אותו לחבר': 'Saved. The file downloaded, and you can send it to a friend',
+  'בחר קודם את קובץ החוברת': 'Choose the booklet file first', 'צריך מפתח AI: לחץ "הגדר מפתח AI"': 'You need an AI key: press "Set up an AI key"',
+  '⏳ Claude קורא את החוברת… זה לוקח בדרך כלל דקה-שתיים. אפשר להמשיך להשתמש באפליקציה, רק אל תסגור את החלון הזה.': '⏳ Claude is reading the booklet… this usually takes a minute or two. Don’t close this window.',
+  'הקובץ לא נקרא. זה קובץ תוכנית (JSON) שיוצא מהאפליקציה?': 'Couldn’t read the file. Is it a plan file (JSON) exported from the app?', 'זה לא קובץ תוכנית לימודים של האפליקציה.': 'This isn’t a study-plan file from the app.', 'אין קורסים בקובץ.': 'There are no courses in the file.',
+  'התשובה נחתכה. בחר פחות עמודים (רק עמודי התוכנית המומלצת) ונסה שוב.': 'The answer was cut off. Pick fewer pages (only the recommended-plan pages) and try again.',
+  'לא מצאתי תוכנית מומלצת בעמודים האלה. בדוק שבחרת את העמודים עם הטבלאות לפי סמסטר.': 'I found no recommended plan on these pages. Check that you picked the pages with the per-semester tables.',
+  'הנדסת מכונות · תוכנית מומלצת תשפ״ו': 'Mechanical Engineering · recommended plan 2025–26', 'הנדסת מכונות (ברירת מחדל)': 'Mechanical Engineering (default)',
+  'תוכנית:': 'Plan:', 'שנת התחלה (סמסטר חורף)': 'Start year (winter semester)', 'אפס לתוכנית ברירת המחדל': 'Reset to the default plan',
+  'איפוס מחזיר את רשימת הקורסים לתוכנית ברירת המחדל של הנדסת מכונות (הציונים והסטטוסים יימחקו; אפשר לבטל מיד אחרי). משימות ומערכת שעות לא נפגעות. להחלפת תוכנית בלי למחוק ציונים: "הוסף מערכת מומלצת" למעלה.': 'Reset puts the course list back to the default Mechanical Engineering plan (grades and statuses are erased; you can undo right after). Tasks and the timetable are not affected. To switch plans without erasing grades: "Add a recommended plan" above.',
+
+  // calendar links
+  '🔗 יומנים לפי קישור (Apple, Outlook ועוד)': '🔗 Calendars by link (Apple, Outlook and more)',
+  'כל יומן שיש לו קישור מנוי (ICS / webcal) מופיע במערכת השעות, לקריאה בלבד. מתעדכן כל רבע שעה כשהאפליקציה פתוחה.': 'Any calendar with a subscription link (ICS / webcal) shows in the timetable, read-only. Refreshes every 15 minutes while the app is open.',
+  '⚠️ יומנים לפי קישור עובדים רק בכתובת החדשה של האפליקציה (Vercel).': '⚠️ Calendars by link work only at the app’s new address (Vercel).',
+  'שם היומן': 'Calendar name', 'קישור (מתחיל ב-webcal:// או https://)': 'Link (starts with webcal:// or https://)', '＋ הוסף יומן': '＋ Add calendar', 'בודק את הקישור…': 'Checking the link…', 'הסר': 'Remove',
+  '🍎 איך מוצאים את הקישור ביומן של אפל?': '🍎 How do I find the link in Apple Calendar?', '📧 Outlook / Google': '📧 Outlook / Google',
+  'הקישור צריך להתחיל ב-webcal:// או https://': 'The link must start with webcal:// or https://', 'לא הצלחתי לקרוא את היומן מהקישור': 'Couldn’t read the calendar from the link',
+  'אם אתה צובע אירועים לפי סוג (לימודים, אישי…), אפשר להציג רק חלק מהצבעים. בהתחלה הכול מוצג.': 'If you color events by type (study, personal…), you can show only some colors. At first everything is shown.',
+  'גם היומן ו-Google Tasks יופיעו כאן.': 'Your calendar and Google Tasks show up here too.',
 };
 
 // "חורף תשפ״ו" and the like: every season with every Hebrew year.
@@ -370,6 +420,9 @@ for (const [he, en] of [['חורף', 'Winter'], ['אביב', 'Spring'], ['קיץ
 
 // Templates: {n} are the values, in the order they appear in the Hebrew.
 const EN_PATTERNS = [
+  ['היומן "{0}" נוסף ({1} אירועים)', 'Calendar "{0}" added ({1} events)'], ['היומן "{0}" הוסר', 'Calendar "{0}" removed'], ['התוכנית "{0}" נטענה', 'Plan "{0}" loaded'],
+  ['נמצאו {0} מסלולים בחוברת', '{0} tracks found in the booklet'], ['{0} קורסים חדשים · {1} יזוזו לסמסטר אחר · {2} בלי שינוי', '{0} new courses · {1} move to another semester · {2} unchanged'],
+  ['{0} קורסים · {1} נק״ז בתוכנית · {2} סמסטרים', '{0} courses · {1} credits in the plan · {2} semesters'], ['חורף {0}–{1}', 'Winter {0}–{1}'],
   ['{0} באיחור', '{0} overdue'], ['{0} להיום', '{0} today'], ['{0} ימים', '{0} days'], ['בעוד {0} ימים', 'in {0} days'], ['באיחור {0} ימים', '{0} days overdue'],
   ['{0} בעוד {1} דקות', '{0} in {1} minutes'], ['+{0} מתוכנן', '+{0} planned'], ['+{0} עכשיו', '+{0} now'], ['{0} · {1} נק״ז', '{0} · {1} credits'],
   ['{0} נק״ז', '{0} credits'], ['{0} קורסים', '{0} courses'], ['/ {0} נק״ז · {1}%', '/ {0} credits · {1}%'], ['· ממוצע {0}', '· average {0}'], ['{0} נק״ז · ממוצע {1}', '{0} credits · average {1}'],

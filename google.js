@@ -1,11 +1,8 @@
 // Google Calendar (read-only, shown in the timetable) and Google Tasks (two-way).
-//
-// Built to work alongside Instinct (the WhatsApp assistant), which keeps
-// everything in the main calendar and tells categories apart by event color
-// (לימודים - חובה, לימודים - אופציונלי, אישי…), and keeps one Google Tasks
-// list per course.
+// Calendars added by link (Apple, Outlook…) come from ics.js and are merged in here.
+// Nothing is shown until you connect: then the timetable mirrors the calendars you
+// have switched on in Google Calendar itself, until you pick others in settings.
 
-const DEFAULT_CALENDARS = ['נועם ישראל', 'לימודים - רשות'];
 const TASKS_LIST_TITLE = 'התואר שלי';
 const LS_CAL_CACHE = 'pp_cal_cache_v2';
 const CAL_API = 'https://www.googleapis.com/calendar/v3';
@@ -36,7 +33,8 @@ const GCal = {
   fetchedAt: {},
   lastError: null,
 
-  ready() { return Sync.connected && Sync.hasScope('calendar') && !!Sync.token(); },
+  googleReady() { return Sync.connected && Sync.hasScope('calendar') && !!Sync.token(); },
+  ready() { return this.googleReady() || (icsAvailable() && icsFeeds().length > 0); },
 
   loadCache() {
     try { this.weeks = JSON.parse(lsGet(LS_CAL_CACHE, '{}')) || {}; } catch { this.weeks = {}; }
@@ -54,7 +52,7 @@ const GCal = {
     const res = await Sync.api(`${CAL_API}/users/me/calendarList?minAccessRole=reader&maxResults=250`);
     const { items = [] } = await res.json();
     this.calendars = items.map(c => ({
-      id: c.id, summary: c.summaryOverride || c.summary, color: c.backgroundColor, primary: !!c.primary,
+      id: c.id, summary: c.summaryOverride || c.summary, color: c.backgroundColor, primary: !!c.primary, selected: !!c.selected,
     }));
     return this.calendars;
   },
@@ -67,19 +65,19 @@ const GCal = {
     return this.palette;
   },
 
-  // Calendars picked in settings. Until you pick: your main calendar plus any
-  // calendar named like the study ones.
+  // Calendars picked in settings. Until you pick: the ones switched on in Google Calendar
+  // itself (or just the main one), so the timetable matches what you see there.
   async selectedIds() {
     const chosen = settings().calendarIds;
     if (Array.isArray(chosen) && chosen.length) return chosen;
     const cals = await this.listCalendars();
-    const wanted = DEFAULT_CALENDARS.map(norm);
-    const ids = cals.filter(c => c.primary || wanted.includes(norm(c.summary))).map(c => c.id);
-    if (ids.length) saveGuess({ calendarIds: ids });
-    return ids;
+    const on = cals.filter(c => c.selected || c.primary).map(c => c.id);
+    return on.length ? on : cals.filter(c => c.primary).map(c => c.id);
   },
 
-  async fetchRange(from, to) {
+  async fetchRange(from, to, force = false) {
+    const ics = icsFetchRange(from, to, force);
+    if (!this.googleReady()) return ics;
     const [ids, cals, palette] = await Promise.all([this.selectedIds(), this.listCalendars(), this.loadPalette()]);
     const lists = await Promise.all(ids.map(async id => {
       const cal = cals.find(c => c.id === id);
@@ -111,7 +109,7 @@ const GCal = {
         color: (e.colorId && palette[e.colorId]) || cal?.color || '#4ea1ff',
       }));
     }));
-    return lists.flat();
+    return [...lists.flat(), ...await ics];
   },
 
   // Looks at ~10 weeks of events and groups them by color, guessing which
@@ -133,15 +131,10 @@ const GCal = {
     return this.categories;
   },
 
-  // Which color categories to show. Picked in settings; until then, the study ones.
-  async shownCategories() {
+  // Which color categories to show. Picked in settings; until then, everything.
+  shownCategories() {
     const chosen = settings().calCategories;
-    if (Array.isArray(chosen)) return chosen;
-    const cats = this.categories || await this.scanCategories();
-    const keys = cats.filter(c => c.study).map(c => c.key);
-    if (!keys.length) return null; // nothing looks like study yet: show everything rather than nothing
-    saveGuess({ calCategories: keys });
-    return keys;
+    return Array.isArray(chosen) ? chosen : null;
   },
 
   // Fetches one week (Sunday..Saturday). Calls onUpdate when fresh data arrives.
@@ -153,8 +146,7 @@ const GCal = {
     this.loading[key] = true;
     try {
       const end = new Date(weekStart); end.setDate(end.getDate() + 7);
-      await this.shownCategories();
-      const events = await this.fetchRange(weekStart, end);
+      const events = await this.fetchRange(weekStart, end, force);
       const changed = JSON.stringify(events) !== JSON.stringify(this.weeks[key]);
       this.weeks[key] = events;
       this.fetchedAt[key] = Date.now();
@@ -176,7 +168,8 @@ const GCal = {
   eventsFor(weekStart) {
     const shown = settings().calCategories;
     const all = this.weeks[ymd(weekStart)] || [];
-    return Array.isArray(shown) ? all.filter(e => shown.includes(e.cat)) : all;
+    // Linked calendars (ics:) are switched on and off as a whole, not by color.
+    return Array.isArray(shown) ? all.filter(e => e.cat.startsWith('ics:') || shown.includes(e.cat)) : all;
   },
   allEventsFor(weekStart) { return this.weeks[ymd(weekStart)] || []; },
 };
@@ -226,7 +219,7 @@ function fromGoogleTask(g, existing = {}, listCourse = '') {
   return { title, type, course, notes, due, done: g.status === 'completed' };
 }
 
-// Guess which course a task list belongs to from its title (Instinct names them after courses).
+// Guess which course a task list belongs to from its title (lists are often named after courses).
 function courseForListTitle(title) {
   const t = norm(title);
   if (!t) return '';
@@ -278,8 +271,7 @@ const GTasks = {
     return map;
   },
 
-  // Instinct keeps a task list for each course you take this semester, so a
-  // course with its own list and no grade yet is one you're studying now.
+  // A course with its own task list and no grade yet is one you're studying now.
   // Done once per course, so unmarking it by hand sticks.
   markCurrentCourses(map) {
     const st = settings();
@@ -401,7 +393,7 @@ const GTasks = {
       }
     }
 
-    // Tasks added directly in Google Tasks (by you or by Instinct).
+    // Tasks added directly in Google Tasks (by you or by another assistant).
     for (const { g, listId } of Object.values(byId)) {
       if (known.has(g.id) || g.deleted || !(g.title || '').trim()) continue;
       stamp('g' + g.id, { ...fromGoogleTask(g, {}, map[listId] || ''), gid: g.id, glist: listId, gUpd: g.updated });
