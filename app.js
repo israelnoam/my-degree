@@ -1103,7 +1103,7 @@ function renderSettings(root) {
   const st = settings();
   const isHttps = location.protocol === 'https:' || location.hostname === 'localhost';
   root.innerHTML = `
-    <section class="panel narrow">
+    <section class="panel">
       <div class="perf-head"><h2>☁️ חשבון וסנכרון</h2><a class="btn small" href="#install" id="toInstall">📲 איך פותחים בטלפון</a></div>
       <p class="muted">הנתונים נשמרים בתיקייה מוסתרת בגוגל דרייב שלך (רק האפליקציה הזו רואה אותה), ומסתנכרנים בין המחשב, האייפד והטלפון.</p>
       <div class="sync-status" data-state="${Sync.state}">
@@ -1135,7 +1135,7 @@ function renderSettings(root) {
       </details>
     </section>
 
-    <section class="panel narrow">
+    <section class="panel">
       <h2>🎓 התואר</h2>
       <p>תוכנית: <b>${esc(st.planName || 'הנדסת מכונות (ברירת מחדל)')}</b></p>
       <div class="row wrap"><button class="btn primary" id="setPlan">📚 קטלוג פקולטה / החלף תוכנית</button></div>
@@ -1146,14 +1146,14 @@ function renderSettings(root) {
       </div>
     </section>
 
-    <section class="panel narrow">
+    <section class="panel">
       <h2>📅 יומן ומשימות</h2>
       <p class="muted">מה מופיע במערכת השעות, ואיך המשימות מסתנכרנות. לחץ על נושא כדי לפתוח.</p>
       ${Sync.connected ? googleSection(st) : '<p class="muted">Google Calendar ו-Google Tasks נכנסים אחרי החיבור ל-Google למעלה.</p>'}
       ${icsSection()}
     </section>
 
-    <section class="panel narrow">
+    <section class="panel">
       <h2>⚙️ כללי</h2>
       <div class="set-row">
         <div class="field"><span class="field-label">ערכת צבעים</span>
