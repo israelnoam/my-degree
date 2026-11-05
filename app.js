@@ -1172,6 +1172,7 @@ function renderSettings(root) {
         <button class="btn" id="setAdvisor">🤖 יועץ תואר</button>
         <button class="btn" id="setWelcome">🚀 צעדים ראשונים</button>
         <button class="btn" id="setShare">🔗 שלח את האפליקציה לחבר</button>
+        <button class="btn" id="setContact">💬 יצירת קשר / הצעה לשיפור</button>
         <a class="btn ghost" href="privacy.html" target="_blank" rel="noopener">🔒 מדיניות פרטיות</a>
       </div>
     </section>
@@ -1222,6 +1223,7 @@ function renderSettings(root) {
   $('#setAdvisor').onclick = () => openAdvisor();
   $('#setWelcome').onclick = () => reopenWelcome();
   $('#setShare').onclick = () => shareApp();
+  $('#setContact').onclick = () => openFeedback();
   $('#setPlan').onclick = () => openPlanPicker();
   $('#startYear').onchange = e => { Store.put('meta', 'settings', { startYear: +e.target.value, startYearConfirmed: true }); Sync.schedule(500); };
   $('#resetCurriculum').onclick = () => {

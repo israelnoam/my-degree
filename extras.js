@@ -534,6 +534,7 @@ function openPalette() {
     { icon: '🚀', label: 'צעדים ראשונים', hint: 'רשימת התחלה', run: () => reopenWelcome() },
     { icon: '📚', label: 'קטלוג פקולטה', hint: 'תוכנית לימודים', run: () => openPlanPicker() },
     { icon: '🔗', label: 'שלח את האפליקציה לחבר', hint: 'קישור', run: () => shareApp() },
+    { icon: '💬', label: 'יצירת קשר / הצעה לשיפור', hint: 'מייל', run: () => openFeedback() },
     { icon: '⚙️', label: 'הגדרות', hint: 'מעבר למסך', run: () => go('settings') },
   ];
   const search = q => {

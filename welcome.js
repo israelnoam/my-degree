@@ -80,6 +80,7 @@ function welcomeCard() {
       </li>`).join('')}</ol>
     <div class="row wrap welcome-foot">
       <button type="button" class="btn small" id="wShare">🔗 שלח את האפליקציה לחבר</button>
+      <button type="button" class="btn small ghost" id="wContact">💬 יצירת קשר</button>
       <a class="btn small ghost" href="privacy.html" target="_blank" rel="noopener">🔒 פרטיות</a>
       <button type="button" class="btn small ghost" id="wHide">${next ? 'הסתר' : 'סגור'}</button>
     </div>
@@ -105,6 +106,7 @@ function bindWelcome(root) {
     toast('אפשר לפתוח את הצעדים הראשונים שוב מההגדרות', () => Store.put('meta', 'settings', { welcomeDone: false }));
   };
   $('#wShare', card).onclick = () => shareApp();
+  $('#wContact', card).onclick = () => openFeedback();
 }
 
 function startWelcome() {
@@ -115,6 +117,37 @@ function reopenWelcome() {
   Store.put('meta', 'settings', { welcomeDone: false, welcomeStarted: true });
   go('map');
   setTimeout(() => $('#welcome')?.scrollIntoView({ behavior: 'smooth' }), 150);
+}
+
+// ---------- contact / suggestions ----------
+const CONTACT_EMAIL = 'israelnoam2001@gmail.com';
+const FEEDBACK_KINDS = [['idea', '💡 הצעה לשיפור'], ['bug', '🐞 משהו לא עובד'], ['question', '❓ שאלה'], ['other', '✉️ אחר']];
+
+function openFeedback(kind = 'idea') {
+  openModal(`
+    <h2>💬 יצירת קשר</h2>
+    <p class="muted">יש רעיון לשיפור, משהו שלא עובד או שאלה? אשמח לשמוע. ההודעה נשלחת מהמייל שלך, כך שאוכל לענות לך.</p>
+    <label>נושא<select name="kind">${FEEDBACK_KINDS.map(([v, l]) => `<option value="${v}" ${v === kind ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+    <label>מה תרצה לכתוב?<textarea name="msg" rows="6" maxlength="1500" required placeholder="למשל: היה עוזר אם במערכת השעות…"></textarea></label>
+    <label>שם (לא חובה)<input name="name" autocomplete="name"></label>
+    <label class="check"><input type="checkbox" name="tech" checked> צרף פרטים טכניים (גרסה, מסך, דפדפן) כדי שיהיה קל לבדוק</label>
+    <p class="muted">אין לך אפליקציית מייל? כתוב ישירות ל-<a href="mailto:${CONTACT_EMAIL}" dir="ltr">${CONTACT_EMAIL}</a> <button type="button" class="btn small ghost" id="fbCopy">📋 העתק</button></p>
+    <div class="actions"><button class="btn" value="cancel">ביטול</button><button class="btn primary" value="send">📧 פתח מייל לשליחה</button></div>`,
+  (action, fd) => {
+    if (action !== 'send') return;
+    const msg = String(fd.get('msg') || '').trim();
+    if (!msg) { alert('כתוב קודם את ההודעה'); return false; }
+    const label = (FEEDBACK_KINDS.find(k => k[0] === fd.get('kind')) || FEEDBACK_KINDS[0])[1].replace(/^\S+\s/, '');
+    const name = String(fd.get('name') || '').trim();
+    const tech = fd.get('tech') ? `\n\n---\nגרסה ${(document.querySelector('script[src*="app.js"]')?.src.match(/v=(d+)/) || [])[1] || ''} · מסך: ${currentView} · ${LANG} · ${navigator.userAgent.replace(/\s*\([^)]*\)/g, ' ').replace(/\s+/g, ' ').slice(0, 120)}` : '';
+    const body = `${msg}${name ? `\n\n${name}` : ''}${tech}`;
+    location.href = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(`התואר שלי · ${label}`)}&body=${encodeURIComponent(body)}`;
+    toast('נפתח המייל שלך: לחץ שם "שלח". תודה! 🙏');
+  },
+  form => {
+    $('#fbCopy', form).onclick = () => navigator.clipboard.writeText(CONTACT_EMAIL).then(() => toast('הכתובת הועתקה')).catch(() => prompt('הכתובת:', CONTACT_EMAIL));
+    setTimeout(() => form.querySelector('textarea')?.focus(), 50);
+  });
 }
 
 // The link a friend opens: it starts them on the checklist with their own, empty app.

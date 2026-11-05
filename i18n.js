@@ -402,6 +402,14 @@ const EN = {
   'תוכנית:': 'Plan:', 'שנת התחלה (סמסטר חורף)': 'Start year (winter semester)', 'אפס לתוכנית ברירת המחדל': 'Reset to the default plan',
   'איפוס מחזיר את רשימת הקורסים לתוכנית ברירת המחדל של הנדסת מכונות (הציונים והסטטוסים יימחקו; אפשר לבטל מיד אחרי). משימות ומערכת שעות לא נפגעות. להחלפת תוכנית בלי למחוק ציונים: "קטלוג פקולטה" למעלה.': 'Reset puts the course list back to the default Mechanical Engineering plan (grades and statuses are erased; you can undo right after). Tasks and the timetable are not affected. To switch plans without erasing grades: "Faculty catalog" above.',
 
+  // contact
+  '💬 יצירת קשר': '💬 Contact', 'יצירת קשר / הצעה לשיפור': 'Contact / suggest an improvement', '💬 יצירת קשר / הצעה לשיפור': '💬 Contact / suggest an improvement', 'מייל': 'Email',
+  'יש רעיון לשיפור, משהו שלא עובד או שאלה? אשמח לשמוע. ההודעה נשלחת מהמייל שלך, כך שאוכל לענות לך.': 'Have an idea, something that doesn’t work, or a question? I’d love to hear it. The message is sent from your own email, so I can reply.',
+  'נושא': 'Topic', '💡 הצעה לשיפור': '💡 Suggestion', '🐞 משהו לא עובד': '🐞 Something doesn’t work', '❓ שאלה': '❓ Question', '✉️ אחר': '✉️ Other',
+  'מה תרצה לכתוב?': 'What would you like to say?', 'שם (לא חובה)': 'Name (optional)', 'צרף פרטים טכניים (גרסה, מסך, דפדפן) כדי שיהיה קל לבדוק': 'Attach technical details (version, screen, browser) to make it easier to check',
+  'אין לך אפליקציית מייל? כתוב ישירות ל-': 'No mail app? Write directly to', '📋 העתק': '📋 Copy', '📧 פתח מייל לשליחה': '📧 Open email to send', 'כתוב קודם את ההודעה': 'Write the message first',
+  'נפתח המייל שלך: לחץ שם "שלח". תודה! 🙏': 'Your email opened: press "Send" there. Thanks! 🙏', 'הכתובת הועתקה': 'Address copied',
+
   // calendar links
   '🔗 יומנים לפי קישור (Apple, Outlook ועוד)': '🔗 Calendars by link (Apple, Outlook and more)',
   'כל יומן שיש לו קישור מנוי (ICS / webcal) מופיע במערכת השעות, לקריאה בלבד. מתעדכן כל רבע שעה כשהאפליקציה פתוחה.': 'Any calendar with a subscription link (ICS / webcal) shows in the timetable, read-only. Refreshes every 15 minutes while the app is open.',

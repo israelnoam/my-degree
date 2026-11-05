@@ -1,6 +1,13 @@
 // Device preferences that must apply before the page draws: colour theme and language.
 // Loaded in <head>; both are kept on this device only (like the AI key).
 
+// The app moved from GitHub Pages to Vercel. Old links and installed icons land here, so
+// send them on (the data comes back from Google Drive after signing in there).
+const APP_HOME = 'https://my-degree-ashen.vercel.app';
+if (location.hostname === 'israelnoam.github.io' && !location.hash.includes('access_token')) {
+  location.replace(APP_HOME + location.pathname.replace(/^\/my-degree/, '') + location.search);
+}
+
 const PREF_THEME = 'pp_theme'; // 'dark' (default) | 'light' | 'auto' (follow the device)
 const PREF_LANG = 'pp_lang';   // 'he' (default) | 'en'
 
