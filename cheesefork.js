@@ -238,5 +238,9 @@ function courseLinks(c) {
     ['🏛️ קטלוג הטכניון', `https://students.technion.ac.il/local/technionsearch/course/${c8}`],
     ['📁 תיקייה בדרייב', `https://drive.google.com/drive/search?q=${q}`],
   ];
+  // Pangea summaries, when the site has this course (its index loads in the background).
+  const pg = typeof Pangea !== 'undefined' ? Pangea.course(c.code) : null;
+  if (pg) links.push(['💧 פנגייה', pg.root]);
+  else if (typeof Pangea !== 'undefined' && !Pangea.index) Pangea.load().catch(() => {});
   return `<div class="link-row">${askAdvisorBtn(c.code)}${links.map(([l, u]) => `<a class="btn small" href="${esc(u)}" target="_blank" rel="noopener">${l}</a>`).join('')}</div>`;
 }

@@ -247,7 +247,7 @@ let currentView = 'map';
 function go(view) {
   currentView = view;
   try { localStorage.setItem('pp_view', view); } catch {}
-  $$('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+  $$('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.view === (view === 'formula' ? 'tools' : view)));
   // Performance and settings live in the header, not the tab bar.
   $('#stats').classList.toggle('active', view === 'performance');
   $('#xSettings')?.classList.toggle('active', view === 'settings');
@@ -266,7 +266,7 @@ document.addEventListener('click', e => {
 });
 
 function render() {
-  const views = { map: renderMap, planner: renderPlanner, performance: renderPerformance, tasks: renderTasks, timetable: renderTimetable, cv: renderCv, settings: renderSettings };
+  const views = { map: renderMap, planner: renderPlanner, performance: renderPerformance, tasks: renderTasks, timetable: renderTimetable, cv: renderCv, tools: renderTools, formula: renderFormula, settings: renderSettings };
   try {
     renderStats();
     (views[currentView] || renderMap)($('#view'));
@@ -1294,7 +1294,7 @@ window.addEventListener('DOMContentLoaded', () => {
   });
   try { currentView = localStorage.getItem('pp_view') || 'map'; } catch {}
   if (welcomeParam) currentView = 'map';
-  if (!$(`#tabs [data-view="${currentView}"]`) && !['performance', 'settings'].includes(currentView)) currentView = 'map';
+  if (!$(`#tabs [data-view="${currentView}"]`) && !['performance', 'settings', 'formula'].includes(currentView)) currentView = 'map';
   go(currentView);
   Sync.start();
   renderSyncBtn(Sync.state);

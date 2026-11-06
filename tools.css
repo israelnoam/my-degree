@@ -1,0 +1,163 @@
+/* ---------- 🧰 Tools tab ---------- */
+.tl-group { margin: 22px 0 10px; font-size: 1rem; color: var(--muted); font-weight: 700; }
+.tl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
+.tl-card {
+  position: relative; display: flex; align-items: stretch; background: var(--panel-2);
+  border: 1px solid var(--line); border-radius: 12px; overflow: hidden; text-align: start; color: var(--text);
+  transition: border-color .15s, transform .15s;
+}
+.tl-card::before { content: ""; position: absolute; inset-inline-start: 0; top: 0; bottom: 0; width: 4px; background: var(--brand); }
+.tl-card:hover { border-color: var(--brand); transform: translateY(-1px); }
+.tl-card.is-hidden { opacity: .45; }
+.tl-main { flex: 1; display: flex; align-items: center; gap: 12px; padding: 12px 14px; color: inherit; text-decoration: none; min-width: 0; }
+.tl-text { display: flex; flex-direction: column; min-width: 0; }
+.tl-text b { font-size: .98rem; }
+.tl-text small { color: var(--muted); font-size: .8rem; line-height: 1.35; }
+.tl-logo {
+  flex: none; width: 42px; height: 42px; border-radius: 11px; display: grid; place-items: center; position: relative;
+  background: color-mix(in srgb, var(--brand) 18%, var(--panel)); border: 1px solid color-mix(in srgb, var(--brand) 45%, transparent);
+}
+.tl-logo .tl-emoji { font-size: 1.35rem; }
+.tl-logo img { position: absolute; inset: 7px; width: 28px; height: 28px; border-radius: 6px; background: #fff; padding: 2px; }
+.tl-logo.has-img .tl-emoji { display: none; }
+.tl-acts { display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 4px 6px; opacity: 0; transition: opacity .15s; }
+.tl-card:hover .tl-acts, .tl-card:focus-within .tl-acts { opacity: 1; }
+.tl-acts button { background: none; border: 0; cursor: pointer; font-size: .85rem; padding: 2px 4px; border-radius: 6px; filter: grayscale(1); opacity: .7; }
+.tl-acts button:hover, .tl-acts button.on { filter: none; opacity: 1; background: var(--panel); }
+@media (hover: none) { .tl-acts { opacity: 1; } }
+button.tl-card { cursor: pointer; font: inherit; padding: 0; width: 100%; }
+.tl-app { grid-column: span 2; }
+@media (max-width: 600px) { .tl-app { grid-column: auto; } }
+.tl-app { border-color: color-mix(in srgb, var(--brand) 50%, var(--line)); background: linear-gradient(135deg, color-mix(in srgb, var(--brand) 16%, var(--panel-2)), var(--panel-2)); }
+.tl-badge { align-self: center; margin-inline-end: 12px; font-size: .75rem; padding: 2px 8px; border-radius: 99px; background: var(--brand); color: #fff; font-weight: 700; }
+.tl-courses { display: grid; gap: 8px; }
+.tl-course { background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; }
+.tl-course .link-row { margin: 6px 0 0; }
+.small { font-size: .8rem; }
+
+/* ---------- 📐 formula sheets: app chrome ---------- */
+.fs-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; margin-top: 14px; }
+.fs-item { display: flex; gap: 12px; align-items: flex-start; text-align: start; background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 12px; cursor: pointer; color: var(--text); font: inherit; }
+.fs-item:hover { border-color: var(--blue); }
+.fs-item > span:last-child { display: flex; flex-direction: column; gap: 4px; }
+.fs-thumb { font-size: 1.8rem; }
+.fs-empty { padding: 20px 0; }
+.fs-bar { gap: 8px; }
+.fs-title-in { width: 300px; font-weight: 700; }
+.fs-mini { display: flex; align-items: center; gap: 6px; font-size: .85rem; color: var(--muted); white-space: nowrap; }
+.fs-mini input[type=number] { width: 62px; padding: 6px 8px; }
+.fs-mini select { width: auto; padding: 6px 8px; }
+.fs-mini input[type=range] { width: 110px; padding: 0; }
+.fs-status { margin: 10px 0; font-size: .9rem; display: flex; gap: 8px; flex-wrap: wrap; }
+.fs-status .ok { color: var(--green); font-weight: 700; }
+.fs-status .bad, .bad { color: var(--red); font-weight: 700; }
+.fs-layout { display: grid; grid-template-columns: 290px 1fr; gap: 14px; align-items: start; }
+.fs-side { position: sticky; top: 70px; display: grid; gap: 10px; max-height: calc(100dvh - 90px); overflow: auto; }
+.fs-box { background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.fs-box-h { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.fs-outline { list-style: none; padding: 0; margin: 0; display: grid; gap: 2px; counter-reset: sec; }
+.fs-outline li { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 8px; font-size: .88rem; }
+.fs-outline li:hover, .fs-outline li.sel { background: var(--panel); }
+.fs-outline li.sel { box-shadow: 0 0 0 1px var(--blue) inset; }
+.fs-outline li.off .fs-oname { opacity: .45; text-decoration: line-through; }
+.fs-oname { cursor: pointer; flex: 1; }
+.fs-oacts { display: flex; gap: 1px; opacity: 0; }
+.fs-outline li:hover .fs-oacts { opacity: 1; }
+.fs-oacts button { background: none; border: 0; color: var(--muted); cursor: pointer; font-size: .75rem; padding: 2px 3px; }
+.fs-oacts button:hover { color: var(--text); }
+.fs-cov { list-style: none; padding: 0; margin: 0; display: grid; gap: 3px; font-size: .84rem; }
+.fs-preview { background: #5b6476; border-radius: 12px; padding: 14px 4px; overflow: hidden; min-height: 400px; }
+.fs-pages { display: flex; flex-direction: column; align-items: center; gap: 18px; width: 794px; margin-inline: auto; }
+.fs-checks { display: flex; flex-wrap: wrap; gap: 6px; }
+.fs-checks .chip { cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+.fs-sources { display: grid; gap: 6px; }
+.fs-src { display: grid; grid-template-columns: 1fr 1.1fr; align-items: center; gap: 8px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; margin: 0; }
+.fs-src > span { display: flex; flex-direction: column; font-size: .9rem; }
+.fs-src input[type=file] { font-size: .8rem; padding: 4px; }
+.fs-src input[type=checkbox] { justify-self: start; width: 20px; height: 20px; }
+dialog.wide { width: min(980px, 96vw); max-width: 96vw; }
+.fs-edit-grid { display: grid; grid-template-columns: 1fr 300px; gap: 14px; }
+.fs-live { background: #fff; border-radius: 8px; padding: 10px; font-size: 12px; min-height: 60px; }
+.mono { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+.fs-ai-row { display: flex; gap: 8px; margin-top: 6px; }
+.fs-types { display: flex; flex-wrap: wrap; gap: 8px; }
+.fs-more { display: grid; gap: 8px; }
+@media (max-width: 1000px) {
+  .fs-layout { grid-template-columns: 1fr; }
+  .fs-side { position: static; max-height: none; }
+  .fs-edit-grid { grid-template-columns: 1fr; }
+  .fs-title-in { width: 100%; }
+}
+
+/* ---------- 📐 the sheet itself: page geometry ---------- */
+.fs-page {
+  position: relative; width: 794px; height: 1122px; background: #fff; color: #111; flex: none;
+  padding: 28px 30px 22px; box-shadow: 0 4px 18px rgba(0,0,0,.35); direction: rtl; overflow: hidden;
+}
+.fs-page.over { outline: 4px solid #ef4444; }
+.fs-page.over::after { content: "חורג ממספר העמודים"; position: absolute; top: 6px; left: 8px; background: #ef4444; color: #fff; font: 700 12px system-ui; padding: 2px 8px; border-radius: 6px; }
+.fs-cols { display: flex; gap: 16px; height: calc(100% - 20px); }
+.fs-col { flex: none; overflow: hidden; }
+.fs-foot { position: absolute; bottom: 12px; left: 0; right: 0; text-align: center; font-size: 10px; color: #333; }
+.fs-measure { position: absolute; left: -99999px; top: 0; visibility: hidden; direction: rtl; }
+.fs-unit { padding-bottom: .55em; }
+.fs-pages .fs-unit { cursor: pointer; border-radius: 3px; }
+.fs-pages .fs-blk:hover { outline: 1.5px dashed #60a5fa; outline-offset: 1px; }
+.fs-pages .fs-sec:hover { outline: 1.5px dashed #60a5fa; }
+.fs-pages .fs-unit.sel-sec { background: rgba(96,165,250,.08); }
+
+/* ---------- 📐 standard theme (from the student's LaTeX sheets) ---------- */
+.fs-theme-standard { font-family: "David Libre", "David", "Frank Ruehl CLM", "Times New Roman", serif; line-height: 1.32; color: #111; }
+.fs-theme-standard .katex { font-size: 1.08em; direction: ltr; unicode-bidi: isolate; }
+.fs-theme-standard .fm { unicode-bidi: isolate; direction: ltr; display: inline-block; }
+.fs-theme-standard .fs-sec {
+  color: #1f3fbf; font-size: 1.32em; font-weight: 700; margin: .25em 0 .45em; padding-bottom: .12em;
+  border-bottom: 1.6px solid #1f3fbf; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; font-family: inherit;
+}
+.fs-theme-standard .fb-h { font-weight: 700; font-size: 1.1em; margin: .35em 0 .15em; }
+.fs-theme-standard .fb-kv { margin: .12em 0; }
+.fs-theme-standard .fb-kv > b { font-weight: 700; }
+.fs-theme-standard .fb-eq { text-align: center; margin: .3em 0; }
+.fs-theme-standard .fb-eq .katex-display { margin: .2em 0; }
+.fs-theme-standard .fb-text { margin: .15em 0; text-align: justify; }
+.fs-theme-standard .fb-list { margin: .15em 0; padding-inline-start: 1.25em; }
+.fs-theme-standard .fb-list li { margin: .08em 0; }
+.fs-theme-standard .fb-list.square { list-style: none; }
+.fs-theme-standard .fb-list.square li::before { content: "▫"; display: inline-block; width: 1.1em; margin-inline-start: -1.1em; font-weight: 700; }
+.fs-theme-standard .fb-list.bullet { list-style: disc; }
+.fs-theme-standard .fb-steps ol { margin: .1em 0 .2em; padding-inline-start: 1.4em; }
+.fs-theme-standard .fb-steps li { margin: .08em 0; }
+.fs-theme-standard .fb-steps li::marker { font-weight: 700; }
+.fs-theme-standard .fb-example { margin: .2em 0; }
+.fs-theme-standard .fb-callout { border-radius: 5px; margin: .3em 0; overflow: hidden; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.fs-theme-standard .fb-callout ul { margin: 0; padding-inline-start: 1.2em; }
+.fs-theme-standard .fb-callout li { margin: .1em 0; }
+.fs-theme-standard .fb-callout.tip { border: 1.4px solid #b91c1c; background: #fdecec; }
+.fs-theme-standard .fb-callout.tip .fb-ct { background: #b91c1c; color: #fff; font-weight: 700; padding: .2em .55em; }
+.fs-theme-standard .fb-callout.tip .fb-cb { padding: .3em .55em; }
+.fs-theme-standard .fb-callout.trap { background: #fde4e4; padding: .3em .55em; }
+.fs-theme-standard .fb-callout.trap .fb-ct { color: #b91c1c; font-weight: 700; }
+.fs-theme-standard .fb-callout.trap .bang { font-weight: 900; }
+.fs-theme-standard .fb-callout.note { border: 1.4px solid #1f3fbf; background: #eef2ff; padding: .3em .55em; }
+.fs-theme-standard .fb-callout.note .fb-ct { color: #1f3fbf; font-weight: 700; }
+.fs-theme-standard .fb-fig { margin: .3em auto; text-align: center; }
+.fs-theme-standard .fb-fig svg { width: var(--w, 90%); height: auto; display: block; margin: 0 auto; }
+.fs-theme-standard .fb-fig figcaption { font-weight: 700; font-size: .92em; margin-top: .15em; }
+.fs-theme-standard .fb-table { width: 100%; border-collapse: collapse; margin: .3em 0; font-size: .95em; }
+.fs-theme-standard .fb-table th, .fs-theme-standard .fb-table td { border: 1px solid #222; padding: .15em .3em; text-align: center; vertical-align: middle; }
+.fs-theme-standard .fb-table th { font-weight: 700; background: #f3f4f6; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.fs-theme-standard .fb-table td svg { width: 100%; height: auto; display: block; max-height: 5.5em; }
+.fs-theme-standard b { font-weight: 700; }
+.fb-badsvg { color: #b91c1c; font-size: .9em; }
+
+/* ---------- 📐 print: only the pages, A4, full colour ---------- */
+#fsPrintRoot { display: none; }
+@media print {
+  body.printing-fs { background: #fff !important; padding: 0 !important; margin: 0 !important; }
+  body.printing-fs > *:not(#fsPrintRoot) { display: none !important; }
+  body.printing-fs #fsPrintRoot { display: block !important; }
+  body.printing-fs .fs-page { box-shadow: none; outline: none; break-after: page; page-break-after: always; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body.printing-fs .fs-page:last-child { break-after: auto; page-break-after: auto; }
+}
+#fsPrintRoot .fs-page { page: fsheet; }
+@page fsheet { size: A4; margin: 0; }
