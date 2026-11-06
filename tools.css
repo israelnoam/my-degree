@@ -162,3 +162,5 @@ dialog.wide { width: min(980px, 96vw); max-width: 96vw; }
 #fsPrintRoot .fs-page { page: fsheet; }
 @page fsheet { size: A4; margin: 0; }
 .btn-logo { width: 14px; height: 14px; vertical-align: -2px; border-radius: 3px; background: #fff; }
+.tl-psearch { display: inline-flex; gap: 4px; align-items: center; margin: 0; }
+.tl-psearch input { width: 170px; padding: 5px 9px; font-size: .8rem; border-radius: 8px; }

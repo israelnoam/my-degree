@@ -125,6 +125,7 @@ function renderTools(root) {
   $$('[data-thide]', root).forEach(b => b.onclick = () => toggleToolPref('toolsHidden', b.dataset.thide));
   $$('[data-tedit]', root).forEach(b => b.onclick = () => editCustomLink(b.dataset.tedit));
   $$('[data-pzip]', root).forEach(b => b.onclick = () => pangeaZip(b.dataset.pzip, b));
+  bindPanopto(root);
   $$('[data-opensheet]', root).forEach(b => b.onclick = () => { fsOpenId = b.dataset.opensheet; go('formula'); });
   $$('[data-newsheet]', root).forEach(b => b.onclick = () => { go('formula'); fsNewSheet(b.dataset.newsheet); });
 
@@ -167,7 +168,7 @@ function courseToolsRow(c) {
   const sheet = Store.list('sheet').find(s => s.course === c.code);
   const links = [
     ['<img class="btn-logo" src="icons/logos/moodle.png" alt=""> Moodle', `https://moodle26.technion.ac.il/course/search.php?search=${c8}`],
-    ['🎬 Panopto', `https://panoptotech.cloud.panopto.eu/Panopto/Pages/Sessions/List.aspx#query=%22${encodeURIComponent(c.name || c8)}%22`],
+    [`🎬 Panopto${c.panopto ? ' 📁' : ''}`, panoptoUrl(c)],
     ['🧀 CheeseFork', `https://cheesefork.cf/course/${c.code}`],
     ['🔎 קטלוג', `https://students.technion.ac.il/local/technionsearch/course/${c8}`],
   ];
@@ -175,6 +176,10 @@ function courseToolsRow(c) {
     <div class="tl-cname"><b>${esc(c.name)}</b> <small class="muted" dir="ltr">${esc(c.code)}</small></div>
     <div class="link-row">
       ${links.map(([l, u]) => `<a class="btn small" href="${esc(u)}" target="_blank" rel="noopener">${l}</a>`).join('')}
+      <form class="tl-psearch" data-psearch="${esc(c.code)}" title="${c.panopto ? 'חיפוש בהקלטות של הקורס: גם במה שנאמר (כתוביות) ובשקפים' : 'חיפוש ב-Panopto לפי שם הקורס. לחיפוש בתוך תיקיית הקורס, קבע תיקייה (⚙️)'}">
+        <input type="search" placeholder="🔎 חיפוש בהקלטות…" aria-label="חיפוש בהקלטות של ${esc(c.name)}">
+        <button type="button" class="btn small" data-pfolder="${esc(c.code)}" title="${c.panopto ? 'תיקיית Panopto של הקורס (שינוי / הסרה)' : 'קבע את תיקיית Panopto של הקורס (לא חובה)'}">⚙️</button>
+      </form>
       ${pg ? `<a class="btn small" href="${esc(pg.root)}" target="_blank" rel="noopener" title="${pg.pages.length} דפי סיכום">💧 פנגייה</a>
               <button type="button" class="btn small" data-pzip="${esc(c.code)}" title="מוריד את כל ${pg.pages.length} הדפים של הקורס, כל דף כ-PDF, בקובץ ZIP אחד">⬇️ ZIP (${pg.pages.length})</button>`
         : Pangea.index ? '' : '<span class="muted small">💧 בודק בפנגייה…</span>'}
@@ -182,6 +187,54 @@ function courseToolsRow(c) {
         : `<button type="button" class="btn small" data-newsheet="${esc(c.code)}">📐 נוסחאון חדש</button>`}
     </div>
   </div>`;
+}
+
+// ---------- Panopto: optional folder per course, and search ----------
+// With a folder, the button opens the course's recordings and the search runs inside them
+// (Panopto searches what was said, via captions, and the slides). Without one, it searches by name.
+const PANOPTO_LIST = 'https://panoptotech.cloud.panopto.eu/Panopto/Pages/Sessions/List.aspx';
+function panoptoFolderId(url) {
+  const m = decodeURIComponent(String(url || '')).match(/folderID="?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
+  return m ? m[1] : '';
+}
+function panoptoUrl(c, query = '') {
+  const id = c.panopto ? panoptoFolderId(c.panopto) : '';
+  const q = query || (id ? '' : c.name || toCode8(c.code));
+  const parts = [id && `folderID=%22${id}%22`, q && `query=%22${encodeURIComponent(q)}%22`].filter(Boolean);
+  return `${PANOPTO_LIST}#${parts.join('&')}`;
+}
+function bindPanopto(root) {
+  $$('[data-psearch]', root).forEach(f => f.onsubmit = e => {
+    e.preventDefault();
+    const c = courseByCode(f.dataset.psearch), q = $('input', f).value.trim();
+    if (!c || !q) return;
+    // Without a folder, add the course name so results stay in this course.
+    window.open(panoptoUrl(c, c.panopto ? q : `${c.name} ${q}`), '_blank', 'noopener');
+  });
+  $$('[data-pfolder]', root).forEach(b => b.onclick = () => panoptoFolderDialog(b.dataset.pfolder));
+}
+function panoptoFolderDialog(code) {
+  const c = courseByCode(code);
+  if (!c) return;
+  openModal(`
+    <h2>🎬 תיקיית Panopto · ${esc(c.name)}</h2>
+    <p class="muted">לא חובה. עם תיקייה, כפתור Panopto פותח ישר את ההקלטות של הקורס, והחיפוש מחפש רק בהן (גם במה שנאמר בהרצאה ובשקפים).</p>
+    <ol class="muted small"><li>פתח את הקורס ב-Panopto (או את קישור ההקלטות במודל).</li><li>העתק את הכתובת מהדפדפן (יש בה <span dir="ltr">folderID</span>).</li><li>הדבק כאן.</li></ol>
+    <label class="field"><span class="field-label">קישור לתיקייה</span><input name="url" dir="ltr" value="${esc(c.panopto || '')}" placeholder="${PANOPTO_LIST}#folderID=…"></label>
+    <p class="bad small" id="pfErr"></p>
+    <div class="actions">
+      ${c.panopto ? '<button class="btn danger" value="remove" formnovalidate>הסר תיקייה</button>' : ''}
+      <a class="btn" href="${esc(panoptoUrl({ ...c, panopto: '' }))}" target="_blank" rel="noopener">מצא ב-Panopto ↗</a>
+      <button class="btn" value="cancel" formnovalidate>ביטול</button>
+      <button class="btn primary" value="save">שמור</button>
+    </div>`, (action, fd) => {
+    if (action === 'remove') { Store.put('course', code, { panopto: '' }); render(); return; }
+    if (action !== 'save') return;
+    const url = String(fd.get('url') || '').trim();
+    if (url && !panoptoFolderId(url)) { $('#pfErr').textContent = 'לא מצאתי בקישור מזהה תיקייה (folderID). העתק את הכתובת כשתיקיית הקורס פתוחה ב-Panopto.'; return false; }
+    Store.put('course', code, { panopto: url });
+    render();
+  });
 }
 
 // ---------- Pangea (פנגייה): student summaries, one folder per course ----------
