@@ -111,11 +111,7 @@ function applyDegreePlan(plan) {
 
 // ---------- files ----------
 function downloadJson(obj, name) {
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([JSON.stringify(obj, null, 1)], { type: 'application/json' }));
-  a.download = name;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  saveFile(new Blob([JSON.stringify(obj, null, 1)], { type: 'application/json' }), name);
 }
 
 function exportPlan(plan) {

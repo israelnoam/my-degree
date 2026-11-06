@@ -161,3 +161,4 @@ dialog.wide { width: min(980px, 96vw); max-width: 96vw; }
 }
 #fsPrintRoot .fs-page { page: fsheet; }
 @page fsheet { size: A4; margin: 0; }
+.btn-logo { width: 14px; height: 14px; vertical-align: -2px; border-radius: 3px; background: #fff; }

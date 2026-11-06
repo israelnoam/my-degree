@@ -233,7 +233,7 @@ function courseLinks(c) {
   const q = encodeURIComponent(c.name || c.code);
   const links = [
     ['🧀 CheeseFork', `https://cheesefork.cf/course/${c.code}`],
-    ['📚 Moodle', `https://moodle26.technion.ac.il/course/search.php?search=${c8}`],
+    ['<img class="btn-logo" src="icons/logos/moodle.png" alt=""> Moodle', `https://moodle26.technion.ac.il/course/search.php?search=${c8}`],
     ['🎬 Panopto', `https://panoptotech.cloud.panopto.eu/Panopto/Pages/Sessions/List.aspx#query=%22${encodeURIComponent(c.name || c8)}%22`],
     ['🏛️ קטלוג הטכניון', `https://students.technion.ac.il/local/technionsearch/course/${c8}`],
     ['📁 תיקייה בדרייב', `https://drive.google.com/drive/search?q=${q}`],

@@ -234,8 +234,10 @@ async function fsLayout(sheet, host) {
 // ---------- screens ----------
 function renderFormula(root) {
   const sheet = fsSheet();
-  if (!sheet) { fsOpenId = null; return renderSheetList(root); }
-  renderSheetEditor(root, sheet);
+  if (!sheet) { fsOpenId = null; renderSheetList(root); }
+  else renderSheetEditor(root, sheet);
+  $('#fsTour', root).onclick = () => appTour(FS_TOUR, 'pp_tour_fs');
+  maybeAppTour(FS_TOUR, 'pp_tour_fs');
 }
 
 function renderSheetList(root) {
@@ -245,6 +247,7 @@ function renderSheetList(root) {
       <div class="toolbar">
         <div><h2>📐 מחולל נוסחאונים</h2><p class="muted">נוסחאון לכל קורס, בסגנון שלך: בוחרים כמה עמודים, מה חשוב, ומאיזה חומר. אחר כך עורכים (גם עם AI) ומייצאים ל-PDF.</p></div>
         <div class="row wrap">
+          <button class="btn" type="button" id="fsTour">🎓 מדריך</button>
           <button class="btn" type="button" data-go="tools">← לכלים</button>
           <button class="btn" type="button" id="fsImport">📥 ייבוא JSON</button>
           <button class="btn primary" type="button" id="fsNew">＋ נוסחאון חדש</button>
@@ -287,6 +290,7 @@ function renderSheetEditor(root, sheet) {
           <button class="btn" type="button" id="fsAi">✨ עזרה מ-AI</button>
           <button class="btn primary" type="button" id="fsPrint">🖨️ PDF</button>
           <button class="btn" type="button" id="fsMore" title="עוד">⋯</button>
+          <button class="btn" type="button" id="fsTour" title="מדריך">🎓</button>
         </div>
       </div>
       <div class="fs-status" id="fsStatus"><span class="muted">מסדר את העמודים…</span></div>
@@ -547,10 +551,7 @@ function fsMoreDialog(sheet) {
 
 const fsExportable = s => { const { id, kind, u, fu, gid, del, ...rest } = s; return rest; };
 function fsDownload(name, text, type = 'application/json') {
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([text], { type }));
-  a.download = name; a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  saveFile(new Blob([text], { type }), name);
 }
 
 function fsImportJson(intoId) {
@@ -619,8 +620,8 @@ function fsNewSheet(courseCode) {
     <label class="field"><span class="field-label">🚫 מה לא צריך? (מה כבר בראש, מה לא במבחן)</span><textarea name="skip" rows="2" placeholder="למשל: בלי טריגונומטריה בסיסית; פרק 9 לא למבחן"></textarea></label>
     <label class="field"><span class="field-label">📌 כללי המבחן ודברים נוספים</span><textarea name="rules" rows="2" placeholder="למשל: דף דו-צדדי, מודפס בצבע; מותר מחשבון"></textarea></label>
     <div class="field"><span class="field-label">📂 חומרים (לפי סדר העדיפות). קבצי PDF נקראים במכשיר בלבד.</span>
-      <div class="fs-sources">${FS_SOURCES.map(([k, l, d]) => `<label class="fs-src"><span>${l}${d ? `<small class="muted">${d}</small>` : ''}</span><input type="file" name="src_${k}" multiple accept=".pdf,.txt,.md,.tex"></label>`).join('')}
-        <label class="fs-src"><span>💡 נוסחאון קיים לדוגמה והשראה<small class="muted">הסגנון והמבנה שלו ילמדו</small></span><input type="file" name="src_inspire" multiple accept=".pdf,.txt,.md,.tex,.json"></label>
+      <div class="fs-sources">${FS_SOURCES.map(([k, l, d]) => `<label class="fs-src"><span>${l}${d ? `<small class="muted">${d}</small>` : ''}</span><input type="file" name="src_${k}" multiple accept=".pdf,.docx,.txt,.md,.tex"></label>`).join('')}
+        <label class="fs-src"><span>💡 נוסחאון קיים לדוגמה והשראה<small class="muted">הסגנון והמבנה שלו ילמדו</small></span><input type="file" name="src_inspire" multiple accept=".pdf,.docx,.txt,.md,.tex,.json"></label>
         <label class="fs-src" id="fsPangeaRow"><span>💧 סיכומי פנגייה לקורס<small class="muted" id="fsPangeaNote">בודק…</small></span><input type="checkbox" name="pangea" id="fsPangea" disabled></label>
       </div>
       <p class="muted small">☁️ בקרוב: חיבור לתיקיית הקורס ב-Google Drive (בוחרים תיקייה, והאפליקציה רואה רק אותה).</p>
@@ -738,6 +739,7 @@ async function fsAiCall(prompt, schema, maxTokens = 16000) {
     fallbacks: 'default',
     output_config: { effort: 'medium', format: { type: 'json_schema', schema } },
     system: FS_SYSTEM,
+    // prompt: text, or content blocks (text + PDF documents for scanned material)
     messages: [{ role: 'user', content: prompt }],
   });
   const response = await stream.finalMessage();
@@ -786,15 +788,31 @@ async function fsGenerate(id, files, usePangea) {
   try {
     const sheet = Store.get('sheet', id);
     const parts = [];
+    // Scanned or handwritten PDFs have almost no text: Claude reads those as documents (it sees
+    // the pages). They are attached in priority order (past exams first) up to the request limits.
+    const docs = [], skipped = [];
+    let docPages = 0, docBytes = 0;
     const budget = { exams: 120000, material: 80000, summaries: 60000, slides: 60000, tutorials: 40000, hw: 30000, inspire: 30000, pangea: 60000 };
     for (const [k, l] of [...FS_SOURCES, ['inspire', 'existing formula sheet (style/inspiration only)']]) {
       let text = '';
       for (const f of files[k] || []) {
         setStatus(`<span class="muted">📖 קורא ${esc(f.name)}…</span>`);
-        text += `\n--- ${f.name} ---\n` + (/\.json$/i.test(f.name) ? await f.text() : await fileToText(f));
+        if (/\.pdf$/i.test(f.name) || f.type === 'application/pdf') {
+          const { text: t, pages } = await fsPdfText(f);
+          if (t.replace(/\s/g, '').length < pages * 150) { // mostly scans
+            if (docPages + pages <= 90 && docBytes + f.size <= 22e6) {
+              docPages += pages; docBytes += f.size;
+              docs.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: await fsBase64(f) }, title: f.name, context: `source kind: ${k} (${l})` });
+              text += `\n--- ${f.name}: scanned, attached as a document ---\n`;
+            } else skipped.push(f.name);
+            continue;
+          }
+          text += `\n--- ${f.name} ---\n${t}`;
+        } else text += `\n--- ${f.name} ---\n` + (/\.json$/i.test(f.name) ? await f.text() : await fileToText(f));
       }
       if (text.trim()) parts.push(`<source kind="${k}" label="${esc(l)}">\n${text.slice(0, budget[k])}\n</source>`);
     }
+    if (skipped.length) parts.push(`(Not attached, over the size limit: ${skipped.join(', ')})`);
     if (usePangea) {
       const pg = Pangea.course(sheet.course);
       let text = '';
@@ -805,7 +823,9 @@ async function fsGenerate(id, files, usePangea) {
       if (text.trim()) parts.push(`<source kind="summaries" label="Pangea student summaries">\n${text.slice(0, budget.pangea)}\n</source>`);
     }
     setStatus('<span class="muted">✨ Claude בונה את הנוסחאון… (בדרך כלל 1-3 דקות)</span>');
-    const out = await fsAiCall(`${fsBriefPrompt(sheet)}\n\nSOURCES:\n${parts.join('\n\n') || '(no files: use your knowledge of the standard Technion syllabus for this course)'}`, FS_SHEET_SCHEMA, 48000);
+    const prompt = `${fsBriefPrompt(sheet)}\n\nSOURCES:\n${parts.join('\n\n') || '(no files: use your knowledge of the standard Technion syllabus for this course)'}`;
+    const out = await fsAiCall(docs.length ? [...docs, { type: 'text', text: prompt }] : prompt, FS_SHEET_SCHEMA, 48000);
+    if (skipped.length) toast(`לא נשלחו (גדולים מדי): ${skipped.join(', ')}`);
     Store.put('sheet', id, { title: out.title || sheet.title, profile: out.profile?.length ? out.profile : sheet.profile, sections: out.sections.map(s => ({ id: fsId(), ...s })), coverage: out.coverage || [] });
     toast('✨ הנוסחאון מוכן');
   } catch (e) {
@@ -813,6 +833,16 @@ async function fsGenerate(id, files, usePangea) {
     setStatus(`<span class="bad">היצירה נכשלה: ${aiErrorHtml(e)}</span>`);
   }
 }
+
+// Text of a PDF and its page count (to tell typed files from scans).
+async function fsPdfText(file) {
+  const pdfjs = await loadPdfJs();
+  const doc = await pdfjs.getDocument({ data: await file.arrayBuffer(), isEvalSupported: false }).promise;
+  let text = '';
+  for (let p = 1; p <= doc.numPages; p++) text += (await (await doc.getPage(p)).getTextContent()).items.map(i => i.str).join(' ') + '\n';
+  return { text, pages: doc.numPages };
+}
+const fsBase64 = file => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = rej; r.readAsDataURL(file); });
 
 // Wider dialog for the editors; back to normal when it closes.
 function fsWide() {

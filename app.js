@@ -247,7 +247,7 @@ let currentView = 'map';
 function go(view) {
   currentView = view;
   try { localStorage.setItem('pp_view', view); } catch {}
-  $$('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.view === (view === 'formula' ? 'tools' : view)));
+  $$('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.view === (['formula', 'cv'].includes(view) ? 'tools' : view)));
   // Performance and settings live in the header, not the tab bar.
   $('#stats').classList.toggle('active', view === 'performance');
   $('#xSettings')?.classList.toggle('active', view === 'settings');
@@ -1205,11 +1205,7 @@ function renderSettings(root) {
 
   $('#exportBtn').onclick = () => {
     const blob = new Blob([JSON.stringify({ v: 1, exportedAt: new Date().toISOString(), recs: Store.recs }, null, 1)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `planner-backup-${ymd(new Date())}.json`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    saveFile(blob, `planner-backup-${ymd(new Date())}.json`);
   };
   $('#importBtn').onclick = () => $('#importFile').click();
   $$('[data-theme-pick]', root).forEach(b => b.onclick = () => { setTheme(b.dataset.themePick); render(); });
@@ -1294,7 +1290,7 @@ window.addEventListener('DOMContentLoaded', () => {
   });
   try { currentView = localStorage.getItem('pp_view') || 'map'; } catch {}
   if (welcomeParam) currentView = 'map';
-  if (!$(`#tabs [data-view="${currentView}"]`) && !['performance', 'settings', 'formula'].includes(currentView)) currentView = 'map';
+  if (!$(`#tabs [data-view="${currentView}"]`) && !['performance', 'settings', 'formula', 'cv'].includes(currentView)) currentView = 'map';
   go(currentView);
   Sync.start();
   renderSyncBtn(Sync.state);

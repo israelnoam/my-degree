@@ -2,8 +2,8 @@
 // course you're taking, the Pangea (פנגייה) summaries, and "my apps" (the formula sheet).
 
 const TOOL_LINKS = [
-  // [id, group, title, description, url, emoji, brand colour]
-  ['moodle', 'study', 'Moodle', 'אתרי הקורסים: חומרים, הגשות והודעות', 'https://moodle26.technion.ac.il', '📚', '#f98012'],
+  // [id, group, title, description, url, emoji, brand colour, own logo file (optional)]
+  ['moodle', 'study', 'Moodle', 'אתרי הקורסים: חומרים, הגשות והודעות', 'https://moodle26.technion.ac.il', '📚', '#f98012', 'icons/logos/moodle.png'],
   ['panopto', 'study', 'Panopto', 'הקלטות הרצאות ותרגולים', 'https://panoptotech.cloud.panopto.eu', '🎬', '#36b37e'],
   ['cheesefork', 'study', 'CheeseFork', 'בניית מערכת שעות, מועדי בחינות וחוות דעת', 'https://cheesefork.cf', '🧀', '#f2c94c'],
   ['pangea', 'study', 'פנגייה', 'סיכומים ודפי נוסחאות של סטודנטים, לפי קורס', 'https://idofangbentov.uk', '💧', '#3b82f6'],
@@ -33,7 +33,7 @@ let toolsShowHidden = false;
 const toolsPrefs = () => ({ pinned: settings().toolsPinned || [], hidden: settings().toolsHidden || [] });
 const customLinks = () => Store.list('link').sort((a, b) => (a.u || 0) - (b.u || 0));
 function allToolLinks() {
-  const base = TOOL_LINKS.map(([id, group, title, desc, url, emoji, color]) => ({ id, group, title, desc, url, emoji, color }));
+  const base = TOOL_LINKS.map(([id, group, title, desc, url, emoji, color, logo]) => ({ id, group, title, desc, url, emoji, color, logo }));
   return base.concat(customLinks().map(l => ({ id: 'my:' + l.id, rid: l.id, group: 'mine', title: l.title, desc: l.desc || '', url: l.url, emoji: l.emoji || '🔗', color: '#64748b' })));
 }
 
@@ -41,7 +41,8 @@ function toolLogo(l) {
   // The site's own icon is the most recognisable; the emoji tile shows if it can't load.
   let host = '';
   try { host = new URL(l.url).hostname; } catch {}
-  return `<span class="tl-logo" style="--brand:${esc(l.color)}"><span class="tl-emoji">${esc(l.emoji)}</span>${host ? `<img src="https://www.google.com/s2/favicons?domain=${esc(host)}&sz=64" alt="">` : ''}</span>`;
+  const src = l.logo || (host ? `https://www.google.com/s2/favicons?domain=${host}&sz=64` : '');
+  return `<span class="tl-logo" style="--brand:${esc(l.color)}"><span class="tl-emoji">${esc(l.emoji)}</span>${src ? `<img src="${esc(src)}" alt="">` : ''}</span>`;
 }
 // Google answers unknown sites with a 16px globe: keep the emoji then. (No inline handlers: CSP.)
 function bindToolLogos(root) {
@@ -98,6 +99,10 @@ function renderTools(root) {
           <span class="tl-main"><span class="tl-logo has-emoji" style="--brand:#1d4ed8"><span class="tl-emoji">📐</span></span>
           <span class="tl-text"><b>מחולל נוסחאונים</b><small>נוסחאון מותאם לקורס, ב-LaTeX ובסגנון שלך. עריכה עם AI וייצוא ל-PDF.</small></span></span>
           <span class="tl-badge">${Store.list('sheet').length || 'חדש'}</span>
+        </button>
+        <button type="button" class="tl-card tl-app" data-go="cv" style="--brand:#0f766e">
+          <span class="tl-main"><span class="tl-logo" style="--brand:#0f766e"><span class="tl-emoji">📄</span></span>
+          <span class="tl-text"><b>מחולל קורות חיים</b><small>פרופיל אחד וגרסה מותאמת לכל משרה, עם AI. ייבוא קו״ח קיים והשכלה מהתואר.</small></span></span>
         </button>
       </div>
 
@@ -161,7 +166,7 @@ function courseToolsRow(c) {
   const pg = Pangea.course(c.code);
   const sheet = Store.list('sheet').find(s => s.course === c.code);
   const links = [
-    ['📚 Moodle', `https://moodle26.technion.ac.il/course/search.php?search=${c8}`],
+    ['<img class="btn-logo" src="icons/logos/moodle.png" alt=""> Moodle', `https://moodle26.technion.ac.il/course/search.php?search=${c8}`],
     ['🎬 Panopto', `https://panoptotech.cloud.panopto.eu/Panopto/Pages/Sessions/List.aspx#query=%22${encodeURIComponent(c.name || c8)}%22`],
     ['🧀 CheeseFork', `https://cheesefork.cf/course/${c.code}`],
     ['🔎 קטלוג', `https://students.technion.ac.il/local/technionsearch/course/${c8}`],
@@ -233,6 +238,10 @@ const HTML2CANVAS_URL = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/htm
 async function pangeaZip(code, btn) {
   const pg = Pangea.course(code);
   if (!pg) return;
+  const zipName = `פנגייה - ${courseLabel(code) || code}.zip`;
+  // Ask where to save now, while the click still counts; the ZIP takes a while to build.
+  let target;
+  try { target = await pickSaveTarget(zipName, 'application/zip'); } catch { return; }
   const label = btn.textContent;
   btn.disabled = true;
   const frame = document.createElement('iframe');
@@ -280,12 +289,8 @@ async function pangeaZip(code, btn) {
     }
     btn.textContent = '⏳ אורז…';
     const blob = await zip.generateAsync({ type: 'blob' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `פנגייה - ${courseLabel(code) || code}.zip`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-    toast(`הורדו ${pg.pages.length} דפים`);
+    await writeSaveTarget(target, blob, zipName);
+    toast(`נשמרו ${pg.pages.length} דפים${target ? '' : ' (בתיקיית ההורדות)'}`);
   } catch (e) {
     console.error(e);
     toast('ההורדה נכשלה: ' + (e.message || e));
@@ -311,4 +316,37 @@ function canvasToPdf(canvas) {
     pdf.addImage(part.toDataURL('image/jpeg', 0.9), 'JPEG', 0, 0, pw, part.height * pw / part.width);
   }
   return pdf.output('arraybuffer');
+}
+
+// ---------- short tours for the apps (same engine as the main tour, in tour.js) ----------
+const fsShowList = () => { if (fsOpenId) { fsOpenId = null; render(); } };
+const fsShowEditor = () => { if (!fsSheet() && fsSheets()[0]) { fsOpenId = fsSheets()[0].id; render(); } };
+const FS_TOUR = [
+  { view: 'formula', run: fsShowList, title: '📐 מחולל הנוסחאונים', text: 'נוסחאון לכל קורס, בסגנון שלך: עונים על כמה שאלות, מצרפים חומרים, ומקבלים נוסחאון שמתאים בדיוק למספר העמודים שמותר במבחן. דקה אחת של הסבר.' },
+  { view: 'formula', run: fsShowList, sel: '#fsNew', title: '＋ נוסחאון חדש', text: 'שואל כמה עמודים מותר, מה אופי הקורס (איורים? פיתוחים? סד״פ?), על מה לשים דגש ומה לדלג. מצרפים חומרים לפי סדר העדיפות: מבחנים קודמים, חומרי הקורס, סיכומים, שקפים, תרגולים ושיעורי בית, וגם נוסחאון קיים להשראה. אפשר לצרף גם את סיכומי פנגייה של הקורס.' },
+  { view: 'formula', run: fsShowList, sel: '#fsNew', title: '✨ שתי דרכים ליצור', text: '"צור עם AI" בונה את הנוסחאון כאן (צריך מפתח API, כמו בקו״ח). "טיוטה + בריף ל-Claude" מעתיק בריף מוכן: שולחים אותו ל-Claude עם החומרים, ואז "ייבוא JSON".' },
+  { view: 'formula', run: fsShowEditor, sel: '#fsSheet', title: '📄 העמודים', text: 'כך הנוסחאון ייראה מודפס. לחיצה על כל חלק (נוסחה, טבלה, איור, תיבת דגש) פותחת עריכה עם תצוגה מקדימה, ושם אפשר גם לבקש מ-AI לשנות רק אותו.' },
+  { view: 'formula', run: fsShowEditor, sel: '#fsPages', parent: true, title: '📏 גודל ועמודים', text: 'כמה עמודים מותר ובכמה עמודות. "התאמה אוטומטית" בוחרת את הגופן הגדול ביותר שעדיין נכנס; אם חורגים, העמוד העודף מסומן באדום.' },
+  { view: 'formula', run: fsShowEditor, sel: '.fs-outline', title: '📑 פרקים', text: 'סדר הפרקים, הסתרה (בלי למחוק), שינוי שם, והוספת בלוק חדש לפרק: נוסחה, סד״פ, דוגמת בזק, קיר הבושה, טבלה, טבלת סימנים או איור.' },
+  { view: 'formula', run: fsShowEditor, sel: '.fs-side .fs-box:first-child', title: '🧭 אופי הקורס', text: 'קובע מה הנוסחאון ידגיש: בקורס כמו מוצקים איורים הם חלק מהעניין, במד״ר הם מיותרים.' },
+  { view: 'formula', run: fsShowEditor, sel: '.fs-side .fs-box:last-child', title: '✅ כיסוי החומר', text: 'כל נושא בסילבוס: מכוסה, חלקי או חסר. ככה רואים מיד אם פרק שלם נשכח.' },
+  { view: 'formula', run: fsShowEditor, sel: '#fsAi', title: '✨ עזרה מ-AI', text: 'בקשה חופשית על כל הנוסחאון או על פרק: "קצר שייכנס ל-2 עמודים", "הוסף סד״פ לכל סוג שאלה", "בדוק שהנוסחאות נכונות". תמיד אפשר לבטל.' },
+  { view: 'formula', run: fsShowEditor, sel: '#fsPrint', title: '🖨️ PDF', text: 'פותח הדפסה בגודל A4 ובצבע מלא. בחר "שמור כ-PDF" כדי לשמור או לשתף עם חברים.' },
+  { view: 'formula', run: fsShowEditor, sel: '#fsMore', title: '⋯ עוד', text: 'גיבוי כ-JSON, החלפת התוכן מ-JSON, העתקת הבריף, כותרת תחתונה ומחיקה.' },
+  { title: '🎉 זהו!', text: 'את המדריך אפשר לפתוח שוב בכפתור "🎓 מדריך" בראש המסך.' },
+];
+const CV_TOUR = [
+  { view: 'cv', run: () => { cvTab = 'profile'; render(); }, title: '📄 מחולל קורות החיים', text: 'פרופיל אחד עם כל מה שעשית, וממנו גרסה מותאמת לכל משרה. הכול מסתנכרן ל-Google Drive.' },
+  { view: 'cv', sel: '#cvImport', title: '📥 ייבוא קו״ח קיים', text: 'טוען קובץ PDF או Word, מזהה את החלקים (השכלה, ניסיון, פרויקטים…) ומראה לך מה נמצא לפני שהוא נשמר.' },
+  { view: 'cv', sel: '#cvFromDegree', title: '🎓 השכלה מהתואר', text: 'ממלא את ההשכלה מהאפליקציה: התואר, הממוצע והקורסים הבולטים.' },
+  { view: 'cv', run: () => { cvTab = 'profile'; render(); }, sel: '#cvBody', title: '👤 הפרופיל שלי', text: 'כל החלקים של קורות החיים. כתוב כאן הכול, גם מה שלא תמיד נכנס: ההתאמה למשרה בוחרת מה להציג.' },
+  { view: 'cv', run: () => { cvTab = 'target'; render(); }, sel: '#cvBody', title: '🎯 התאמה למשרה', text: 'מדביקים מודעת דרושים, והגרסה מסתדרת לפי מילות המפתח שבה, או עם AI שכותב אותה מחדש. משם מדפיסים או שומרים PDF.' },
+  { view: 'cv', run: () => { cvTab = 'ai'; render(); }, sel: '#cvBody', title: '🤖 הגדרות AI', text: 'מפתח API של Anthropic (נשמר רק במכשיר הזה). אותו מפתח משמש גם את יועץ התואר ואת מחולל הנוסחאונים.' },
+  { run: () => { cvTab = 'profile'; render(); }, title: '🎉 זהו!', text: 'את המדריך אפשר לפתוח שוב בכפתור "🎓 מדריך" בראש המסך.' },
+];
+const appTour = (steps, key) => startTour(0, steps, key);
+// First visit to an app on this device: its tour starts by itself.
+function maybeAppTour(steps, key) {
+  if (lsGet(key) || (typeof tour !== 'undefined' && tour) || document.querySelector('dialog[open]')) return;
+  setTimeout(() => { if (!lsGet(key) && !tour) startTour(0, steps, key); }, 600);
 }

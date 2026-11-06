@@ -615,10 +615,7 @@ function exportMapPng() {
         text(ln.textContent.replace(/\s+/g, ' '), x + r.width - 10, y + step * (i + 1), r.width - 20, `${lc.fontWeight} ${parseFloat(lc.fontSize)}px ${family}`, lc.color);
       });
     });
-    const a = document.createElement('a');
-    a.href = cv.toDataURL('image/png'); a.download = 'מפת-הקורסים.png';
-    document.body.appendChild(a); a.click(); a.remove();
-    toast('התמונה נשמרה');
+    cv.toBlob(blob => saveFile(blob, 'מפת-הקורסים.png').then(ok => ok && toast('התמונה נשמרה')), 'image/png');
   }, 80);
 }
 

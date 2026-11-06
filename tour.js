@@ -13,7 +13,7 @@ const TOUR_STEPS = [
   { view: 'map', sel: '#xBell', title: '🔔 התראות', text: 'סיכום שבועי חדש בכל יום ראשון (מה להגיש, מבחנים בשבועיים הקרובים וקורסים בלי ציון), השיעורים של היום, משימות דחופות, ותזכורת 10 דקות לפני כל שיעור.' },
   { view: 'map', sel: '#xAdvisor', title: '🤖 יועץ תואר', text: 'שאל בשפה חופשית: מה לקחת בסמסטר הבא, אם אתה בקצב, מה יקרה לממוצע אם… היועץ עונה לפי הנתונים שלך – ורק מציע, לא משנה כלום בעצמו.' },
   { view: 'map', sel: '#xSettings', title: '⚙️ הגדרות', text: 'חיבור ל-Google, יומנים ורשימות משימות, גיבוי ושחזור, התקנה בטלפון, שאלות נפוצות והסיור הזה.' },
-  { view: 'map', sel: '#tabs', title: '🧭 המסכים', text: 'מפת קורסים, תכנון תואר, משימות, מערכת שעות וקורות חיים. בטלפון הסרגל הזה נמצא בתחתית המסך.' },
+  { view: 'map', sel: '#tabs', title: '🧭 המסכים', text: 'מפת קורסים, תכנון תואר, משימות, מערכת שעות וכלים (אתרי הטכניון, מחולל נוסחאונים וקורות חיים). בטלפון הסרגל הזה נמצא בתחתית המסך.' },
   { view: 'map', sel: '.semesters', title: '🎓 מפת הקורסים', text: 'כל הקורסים לפי סמסטר, בצבע לפי מצב (נעול, פתוח, בלימוד, הושלם). הקווים הם דרישות הקדם; מעבר עכבר מדגיש את השרשרת, ולחיצה פותחת ציון, CheeseFork ומחשבון יעד למבחן.' },
   { view: 'map', sel: '#gradeSheetBtn', title: '📄 ייבוא גיליון ציונים', text: 'טען את גיליון הציונים מהטכניון (PDF) והציונים והסטטוסים יתעדכנו לבד.' },
   { view: 'map', sel: '#xMapCmp', title: '⚖️ השוואת קורסים', text: 'עד שלושה קורסים זה לצד זה: דרישות קדם, מועדי מבחנים, אחראים, סילבוס – ואזהרה על מבחנים צמודים או הרצאות מתנגשות.' },
@@ -34,16 +34,17 @@ const TOUR_STEPS = [
   { title: '🎉 זהו!', text: 'אפשר להפעיל את הסיור שוב מ⚙️ הגדרות ← עזרה ומידע, או מהחיפוש המהיר (Ctrl+K). בהצלחה בתואר!' },
 ];
 
-let tour = null; // {i, root, back: {view, plannerTab}, timer}
+let tour = null; // {i, steps, doneKey, root, back: {view, plannerTab}, timer}
 
-function startTour(at = 0) {
+// steps/doneKey let each app (formula sheets, CV) have its own short tour.
+function startTour(at = 0, steps = TOUR_STEPS, doneKey = TOUR_LS) {
   if (tour) endTour(false);
   $$('dialog[open]').forEach(d => d.close());
   const root = document.createElement('div');
   root.className = 'tour';
   root.innerHTML = '<div class="tour-spot"></div><div class="tour-card" role="dialog" aria-live="polite"></div>';
   document.body.appendChild(root);
-  tour = { i: at, root, back: { view: currentView, plannerTab } };
+  tour = { i: at, steps, doneKey, root, back: { view: currentView, plannerTab } };
   const place = () => tourPlace();
   tour.place = place;
   addEventListener('resize', place);
@@ -64,7 +65,7 @@ function tourKeys(e) {
 
 function tourStep(d) {
   const n = tour.i + d;
-  if (n >= TOUR_STEPS.length) return endTour(true);
+  if (n >= tour.steps.length) return endTour(true);
   if (n < 0) return;
   tour.i = n;
   tourShow();
@@ -79,13 +80,14 @@ function tourTarget(step) {
 }
 
 function tourShow() {
-  const step = TOUR_STEPS[tour.i];
+  const step = tour.steps[tour.i];
   if (step.tab) plannerTab = step.tab;
   if (step.view && (step.view !== currentView || step.tab)) go(step.view);
+  step.run?.();
   const card = $('.tour-card', tour.root);
-  const last = tour.i === TOUR_STEPS.length - 1;
+  const last = tour.i === tour.steps.length - 1;
   card.innerHTML = `
-    <div class="tour-prog"><span>${tour.i + 1} / ${TOUR_STEPS.length}</span><div class="bar"><i style="width:${(tour.i + 1) / TOUR_STEPS.length * 100}%"></i></div></div>
+    <div class="tour-prog"><span>${tour.i + 1} / ${tour.steps.length}</span><div class="bar"><i style="width:${(tour.i + 1) / tour.steps.length * 100}%"></i></div></div>
     <h3>${step.title}</h3><p>${step.text}</p>
     <div class="row">
       ${last ? '' : '<button type="button" class="btn small" data-tour="skip">דלג</button>'}
@@ -110,7 +112,7 @@ function tourShow() {
 
 function tourPlace() {
   if (!tour) return;
-  const step = TOUR_STEPS[tour.i];
+  const step = tour.steps[tour.i];
   const spot = $('.tour-spot', tour.root), card = $('.tour-card', tour.root);
   const el = tourTarget(step);
   const vw = innerWidth, vh = innerHeight, pad = 6, gap = 12;
@@ -140,9 +142,9 @@ function endTour(done) {
   removeEventListener('scroll', tour.place, true);
   document.removeEventListener('keydown', tourKeys);
   tour.root.remove();
-  const back = tour.back;
+  const back = tour.back, doneKey = tour.doneKey;
   tour = null;
-  if (done) lsSet(TOUR_LS, '1');
+  if (done) lsSet(doneKey, '1');
   plannerTab = back.plannerTab;
   go(back.view);
 }

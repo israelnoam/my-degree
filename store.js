@@ -30,6 +30,39 @@ function lsSet(key, value) {
   try { value === null ? localStorage.removeItem(key) : localStorage.setItem(key, value); } catch {}
 }
 
+// ---------- saving files ----------
+// On desktop Chrome/Edge the browser asks where to save, and opens in the folder used last time.
+// Elsewhere (Safari, Firefox, phones) the file goes to the browser's Downloads folder.
+// Ask first (while the click still counts), write later: building a ZIP can take a while.
+async function pickSaveTarget(name, mime = 'application/octet-stream') {
+  if (!window.showSaveFilePicker || window.top !== window) return null;
+  const ext = name.includes('.') ? '.' + name.split('.').pop().toLowerCase() : '';
+  try {
+    return await window.showSaveFilePicker({ suggestedName: name, id: 'my-degree-files', ...(ext ? { types: [{ description: ext.slice(1).toUpperCase(), accept: { [mime]: [ext] } }] } : {}) });
+  } catch (e) {
+    if (e.name === 'AbortError') throw e; // the user closed the window: don't save
+    return null;                          // the picker isn't allowed here: plain download
+  }
+}
+async function writeSaveTarget(handle, blob, name) {
+  if (handle) {
+    const w = await handle.createWritable();
+    await w.write(blob);
+    await w.close();
+    return;
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+// Returns false if the user cancelled.
+async function saveFile(blob, name) {
+  try { await writeSaveTarget(await pickSaveTarget(name, blob.type || 'application/octet-stream'), blob, name); return true; }
+  catch (e) { if (e.name === 'AbortError') return false; throw e; }
+}
+
 function uid() {
   if (window.crypto?.randomUUID) return crypto.randomUUID().slice(0, 12);
   return Math.random().toString(36).slice(2, 14);

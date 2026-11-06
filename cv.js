@@ -534,6 +534,8 @@ function renderCv(root) {
       <div class="toolbar">
         <div><h2>📄 קורות חיים</h2><p class="muted">פרופיל אחד, וגרסה מותאמת לכל משרה או חברה. הכול מסתנכרן ל-Google Drive.</p></div>
         <div class="row wrap">
+          <button class="btn" id="cvTour" type="button">🎓 מדריך</button>
+          <button class="btn" type="button" data-go="tools">← לכלים</button>
           <button class="btn" id="cvImport">📥 ייבוא קו״ח קיים</button>
           <button class="btn" id="cvFromDegree">🎓 מלא השכלה מהתואר</button>
         </div>
@@ -544,6 +546,8 @@ function renderCv(root) {
 
   $$('[data-cvtab]', root).forEach(b => b.onclick = () => { cvTab = b.dataset.cvtab; render(); });
   $('#cvImport').onclick = () => cvFileInput().click();
+  $('#cvTour').onclick = () => appTour(CV_TOUR, 'pp_tour_cv');
+  maybeAppTour(CV_TOUR, 'pp_tour_cv');
   $('#cvFromDegree').onclick = fillFromDegree;
   if (cvTab === 'profile') bindProfileEditor(root, p);
   else if (cvTab === 'target') bindTargetView(root, p);
