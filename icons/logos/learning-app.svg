@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- "Cool brain" icon: a brain in sunglasses on a feed card. Full-bleed square: iOS rounds the corners itself. -->
+  <rect width="512" height="512" fill="#7c3aed"/>
+  <rect x="150" y="104" width="212" height="304" rx="28" fill="#f0abfc" transform="rotate(-10 256 256)"/>
+  <rect x="150" y="104" width="212" height="304" rx="28" fill="#fdf4ff"/>
+  <path d="M196 236 C178 196 214 160 242 176 C256 150 300 152 310 182 C342 180 350 222 330 240 C340 270 306 292 284 278 C268 300 230 298 222 276 C196 282 182 256 196 236 Z" fill="#f472b6"/>
+  <path d="M226 212 C238 222 236 238 226 246 M262 196 C276 210 272 230 262 238 M292 214 C302 226 298 240 290 248" fill="none" stroke="#be185d" stroke-width="8" stroke-linecap="round"/>
+  <rect x="198" y="214" width="56" height="30" rx="10" fill="#111827"/>
+  <rect x="268" y="214" width="56" height="30" rx="10" fill="#111827"/>
+  <rect x="250" y="222" width="22" height="8" fill="#111827"/>
+  <rect x="186" y="330" width="140" height="22" rx="11" fill="#7c3aed"/>
+  <path d="M372 92 l10 24 l24 10 l-24 10 l-10 24 l-10 -24 l-24 -10 l24 -10 z" fill="#fde047"/>
+</svg>

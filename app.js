@@ -236,7 +236,7 @@ function bindGoogleBar(root) {
     } else {
       GCal.lastError = null;
       if (!Sync.ensureToken()) return;
-      GCal.fetchWeek(ttWeek, () => render(), true).then(() => render());
+      ttFetch(() => render(), true).then(() => render());
       render();
     }
   });
@@ -752,6 +752,42 @@ function startOfWeek(d) {
   return x;
 }
 let ttWeek = startOfWeek(new Date());
+// What the timetable shows: a whole week, 3 days or 1 day. ttDay is the first day shown
+// in the day / 3-day views; ttWeek always holds the week of the first column.
+const LS_TT_MODE = 'pp_tt_mode';
+const TT_MODES = [['1', 'יום'], ['3', '3 ימים'], ['week', 'שבוע']];
+let ttMode = null;
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const dayStart = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+let ttDay = dayStart(new Date());
+function ttModeNow() {
+  if (!ttMode) {
+    // Remembered per device; a phone starts on 3 days, a wider screen on the week.
+    const saved = lsGet(LS_TT_MODE, '');
+    ttMode = TT_MODES.some(([m]) => m === saved) ? saved : (window.innerWidth < 600 ? '3' : 'week');
+  }
+  return ttMode;
+}
+function setTtMode(mode) {
+  const today = dayStart(new Date());
+  if (mode !== 'week' && ttModeNow() === 'week') {
+    // Coming from the week view: start at today if it's in that week, else at its Sunday.
+    ttDay = ymd(startOfWeek(today)) === ymd(ttWeek) ? today : new Date(ttWeek);
+  }
+  if (mode === 'week') ttWeek = startOfWeek(ttDay);
+  ttMode = mode;
+  lsSet(LS_TT_MODE, mode);
+  render();
+}
+// The (one or two) weeks the visible days fall in, for fetching and refreshing.
+function ttWeeksShown() {
+  if (ttModeNow() === 'week') return [ttWeek];
+  const a = startOfWeek(ttDay), b = startOfWeek(addDays(ttDay, ttMode === '3' ? 2 : 0));
+  return ymd(a) === ymd(b) ? [a] : [a, b];
+}
+function ttFetch(onUpdate, force = false) {
+  return Promise.all(ttWeeksShown().map(w => GCal.fetchWeek(w, onUpdate, force)));
+}
 
 // Side-by-side layout for overlapping items in one day column.
 function layoutLanes(items) {
@@ -776,36 +812,57 @@ function layoutLanes(items) {
 }
 
 function renderTimetable(root) {
-  const weekStart = ttWeek;
-  const weekEnd = new Date(weekStart); weekEnd.setDate(weekEnd.getDate() + 6);
-  const isThisWeek = ymd(weekStart) === ymd(startOfWeek(new Date()));
-  const todayKey = ymd(new Date());
-  const dates = Array.from({ length: 7 }, (_, i) => { const d = new Date(weekStart); d.setDate(d.getDate() + i); return d; });
+  const mode = ttModeNow();
+  const today = dayStart(new Date());
+  const todayKey = ymd(today);
+  const dates = mode === 'week'
+    ? Array.from({ length: 7 }, (_, i) => addDays(ttWeek, i))
+    : Array.from({ length: mode === '3' ? 3 : 1 }, (_, i) => addDays(ttDay, i));
+  if (mode !== 'week') ttWeek = startOfWeek(dates[0]);
+  const keys = dates.map(ymd);
+  const first = dates[0], last = dates[dates.length - 1];
+  const showsToday = keys.includes(todayKey);
+  const fmt = d => `${d.getDate()}.${d.getMonth() + 1}`;
+  const rangeLabel = mode === '1' ? `${DAY_NAMES[first.getDay()]} ${fmt(first)}` : `${fmt(first)} – ${fmt(last)}`;
 
-  // Weekly class slots + this week's calendar events, normalised to {day, s, e}.
-  const items = slots().map(s => ({
-    kind: 'slot', id: s.id, day: +s.day, s: toMin(s.start), e: toMin(s.end),
-    title: s.course ? courseLabel(s.course) : s.title, sub: s.stype, place: s.room, hue: slotColor(s.course || s.title),
-  }));
-  const allDay = Array.from({ length: 7 }, () => []);
-  for (const ev of GCal.eventsFor(weekStart)) {
+  // Calendar events of every week the visible days touch (a 3-day view can cross Saturday).
+  const seen = new Set();
+  const events = ttWeeksShown().flatMap(w => GCal.eventsFor(w)).filter(ev => !seen.has(ev.id) && seen.add(ev.id));
+
+  // Weekly class slots + calendar events, normalised to {col, s, e} (col = index in dates).
+  const items = [];
+  for (const s of slots()) {
+    dates.forEach((d, col) => {
+      if (d.getDay() !== +s.day) return;
+      items.push({
+        kind: 'slot', id: s.id, col, s: toMin(s.start), e: toMin(s.end),
+        title: s.course ? courseLabel(s.course) : s.title, sub: s.stype, place: s.room, hue: slotColor(s.course || s.title),
+      });
+    });
+  }
+  const allDay = dates.map(() => []);
+  for (const ev of events) {
     if (ev.allDay) {
-      dates.forEach((d, i) => { const k = ymd(d); if (k >= ev.start.slice(0, 10) && k < ev.end.slice(0, 10)) allDay[i].push(ev); });
+      keys.forEach((k, i) => { if (k >= ev.start.slice(0, 10) && k < ev.end.slice(0, 10)) allDay[i].push(ev); });
       continue;
     }
     const st = new Date(ev.start), en = new Date(ev.end);
-    const day = ymd(startOfWeek(st)) === ymd(weekStart) ? st.getDay() : -1;
-    if (day < 0) continue;
+    const col = keys.indexOf(ymd(st));
+    if (col < 0) continue;
     const endMin = ymd(en) === ymd(st) ? en.getHours() * 60 + en.getMinutes() : 24 * 60;
     items.push({
-      kind: 'event', id: ev.id, day, s: st.getHours() * 60 + st.getMinutes(), e: Math.max(endMin, st.getHours() * 60 + st.getMinutes() + 15),
+      kind: 'event', id: ev.id, col, s: st.getHours() * 60 + st.getMinutes(), e: Math.max(endMin, st.getHours() * 60 + st.getMinutes() + 15),
       title: ev.title, sub: ev.calendar, place: ev.location, color: ev.color,
     });
   }
 
   const allDayH = Math.max(0, ...allDay.map(a => a.length)) * 24;
-  const used = new Set(items.map(i => i.day).concat(allDay.flatMap((a, i) => a.length ? [i] : [])));
-  const days = used.has(6) ? 7 : used.has(5) ? 6 : 5;
+  // The week view drops an empty Friday / Saturday; the day views show exactly the days asked for.
+  let days = dates.length;
+  if (mode === 'week') {
+    const used = new Set(items.map(i => i.col).concat(allDay.flatMap((a, i) => a.length ? [i] : [])));
+    days = used.has(6) ? 7 : used.has(5) ? 6 : 5;
+  }
   const startMin = Math.min(8 * 60 + 30, ...items.map(i => Math.floor((i.s - 30) / 60) * 60 + 30));
   const endMin = Math.max(21 * 60 + 30, ...items.map(i => i.e));
   const hours = [];
@@ -813,7 +870,7 @@ function renderTimetable(root) {
   const total = hours.length * 60;
 
   const cols = dates.slice(0, days).map((d, di) => {
-    const dayItems = layoutLanes(items.filter(i => i.day === di));
+    const dayItems = layoutLanes(items.filter(i => i.col === di));
     const blocks = dayItems.map(it => {
       const pos = `top:${(it.s - startMin) / total * 100}%;height:${(it.e - it.s) / total * 100}%;` +
         `width:calc(${100 / it.lanes}% - 6px);inset-inline-start:calc(${(100 / it.lanes) * it.lane}% + 3px);`;
@@ -822,51 +879,65 @@ function renderTimetable(root) {
         <b>${esc(it.title)}</b><small>${esc(it.sub)} · <span dir="ltr">${hhmm(it.s)}–${hhmm(it.e)}</span></small>${it.place ? `<small>${esc(it.place)}</small>` : ''}
       </button>`;
     }).join('');
-    const key = ymd(d);
-    return `<div class="tt-col ${key === todayKey ? 'today' : ''}" data-day="${di}">
-      <div class="tt-head">${DAY_NAMES[di]}<small>${d.getDate()}.${d.getMonth() + 1}</small></div>
+    return `<div class="tt-col ${keys[di] === todayKey ? 'today' : ''}" data-day="${d.getDay()}">
+      <div class="tt-head">${DAY_NAMES[d.getDay()]}<small>${fmt(d)}</small></div>
       <div class="tt-allday" style="height:${allDayH}px">${allDay[di].map(ev => `<button type="button" class="allday" data-kind="event" data-id="${esc(ev.id)}" style="--ev:${esc(ev.color)}">${esc(ev.title)}</button>`).join('')}</div>
       <div class="tt-body" style="height:${hours.length * HOUR_PX}px">${hours.map(() => '<div class="tt-hour"></div>').join('')}${blocks}</div>
     </div>`;
   }).join('');
 
-  const todayIdx = isThisWeek ? new Date().getDay() : -1;
-  const todays = items.filter(i => i.day === todayIdx).sort((a, b) => a.s - b.s);
+  // The "today" strip only adds something when today is one column among several.
+  const todayCol = keys.indexOf(todayKey);
+  const todays = mode === '1' || todayCol < 0 ? [] : items.filter(i => i.col === todayCol).sort((a, b) => a.s - b.s);
   const calNote = googleBar('calendar') +
     (Sync.connected && Sync.hasScope('calendar') && GCal.lastError ? errorNote('לא הצלחתי לטעון את היומן', GCal.lastError) : '');
+  const prevLabel = { week: 'שבוע קודם', 3: '3 ימים קודמים', 1: 'יום קודם' }[mode];
+  const nextLabel = { week: 'שבוע הבא', 3: '3 הימים הבאים', 1: 'יום הבא' }[mode];
+  const atToday = mode === 'week' ? showsToday : keys[0] === todayKey;
 
   root.innerHTML = `
     <section class="panel">
       <div class="toolbar">
         <h2>🕒 מערכת שעות</h2>
         <div class="row wrap">
-          <button class="btn" id="wkPrev" aria-label="שבוע קודם">→</button>
-          <button class="btn ${isThisWeek ? 'on' : ''}" id="wkToday">השבוע</button>
-          <button class="btn" id="wkNext" aria-label="שבוע הבא">←</button>
-          <span class="muted">${weekStart.getDate()}.${weekStart.getMonth() + 1} – ${weekEnd.getDate()}.${weekEnd.getMonth() + 1}</span>
+          <div class="seg small tt-modes" role="group" aria-label="תצוגה">
+            ${TT_MODES.map(([m, l]) => `<button type="button" data-ttmode="${m}" class="${mode === m ? 'on' : ''}" aria-pressed="${mode === m}">${l}</button>`).join('')}
+          </div>
+          <span class="row tt-nav">
+          <button class="btn" id="wkPrev" aria-label="${prevLabel}" title="${prevLabel}">→</button>
+          <button class="btn ${atToday ? 'on' : ''}" id="wkToday">${mode === 'week' ? 'השבוע' : 'היום'}</button>
+          <button class="btn" id="wkNext" aria-label="${nextLabel}" title="${nextLabel}">←</button>
+          <span class="muted">${rangeLabel}</span>
+          </span>
           <button class="btn primary" id="addSlot">＋ הוסף שיעור</button>
         </div>
       </div>
       ${calNote}
       ${todays.length ? `<div class="today-strip"><b>היום:</b> ${todays.map(i => `<span class="chip"><span dir="ltr">${hhmm(i.s)}</span> ${esc(i.title)}</span>`).join('')}</div>` : ''}
       <div class="tt-scroll">
-        <div class="tt" style="--days:${days}">
+        <div class="tt" style="--days:${days};--colmin:${mode === 'week' ? 110 : 80}px">
           <div class="tt-times"><div class="tt-head"></div><div class="tt-allday" style="height:${allDayH}px"></div><div class="tt-body">${hours.map(m => `<div class="tt-hour"><span>${hhmm(m)}</span></div>`).join('')}</div></div>
           ${cols}
         </div>
       </div>
-      <p class="hint">שיעורים שהוספת כאן חוזרים כל שבוע. אירועים מ-Google Calendar מוצגים בצבע של היומן שלהם. לחץ על משבצת ריקה כדי להוסיף שיעור.</p>
+      <p class="hint">שיעורים שהוספת כאן חוזרים כל שבוע. אירועים מ-Google Calendar מוצגים בצבע של היומן שלהם. לחץ על משבצת ריקה כדי להוסיף שיעור.${mode === 'week' ? '' : ' בטלפון אפשר גם להחליק הצידה כדי לעבור בין הימים.'}</p>
     </section>`;
 
-  $('#wkPrev').onclick = () => { ttWeek = new Date(weekStart); ttWeek.setDate(ttWeek.getDate() - 7); render(); };
-  $('#wkNext').onclick = () => { ttWeek = new Date(weekStart); ttWeek.setDate(ttWeek.getDate() + 7); render(); };
-  $('#wkToday').onclick = () => { ttWeek = startOfWeek(new Date()); render(); };
+  const move = dir => {
+    if (mode === 'week') ttWeek = addDays(ttWeek, dir * 7);
+    else ttDay = addDays(ttDay, dir * dates.length);
+    render();
+  };
+  $('#wkPrev').onclick = () => move(-1);
+  $('#wkNext').onclick = () => move(1);
+  $('#wkToday').onclick = () => { ttWeek = startOfWeek(today); ttDay = today; render(); };
+  $$('[data-ttmode]', root).forEach(b => b.onclick = () => { if (b.dataset.ttmode !== mode) setTtMode(b.dataset.ttmode); });
   $('#addSlot').onclick = () => editSlot(null);
   bindGoogleBar(root);
   $$('[data-kind]', root).forEach(el => el.onclick = e => {
     e.stopPropagation();
     if (el.dataset.kind === 'slot') editSlot(el.dataset.id);
-    else showEvent(GCal.eventsFor(weekStart).find(ev => ev.id === el.dataset.id));
+    else showEvent(events.find(ev => ev.id === el.dataset.id));
   });
   $$('.tt-col .tt-body', root).forEach(body => body.onclick = e => {
     const rect = body.getBoundingClientRect();
@@ -874,7 +945,22 @@ function renderTimetable(root) {
     editSlot(null, { day: +body.parentElement.dataset.day, start: hhmm(mins), end: hhmm(mins + 120) });
   });
 
-  GCal.fetchWeek(weekStart, () => { if (currentView === 'timetable' && ttWeek === weekStart) render(); });
+  // Swipe sideways to move in the day / 3-day views (the week view scrolls sideways instead).
+  // Right-to-left layout: later days sit to the left, so dragging the page to the right shows them.
+  if (mode !== 'week') {
+    const area = $('.tt-scroll', root);
+    let x0 = null, y0 = 0;
+    area.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, { passive: true });
+    area.addEventListener('touchend', e => {
+      if (x0 === null) return;
+      const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
+      x0 = null;
+      if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) move(dx > 0 ? 1 : -1);
+    });
+  }
+
+  const shown = ttWeeksShown().map(ymd).join();
+  ttFetch(() => { if (currentView === 'timetable' && ttWeeksShown().map(ymd).join() === shown) render(); });
 }
 
 function showEvent(ev) {

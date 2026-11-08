@@ -413,7 +413,7 @@ function updateBell() {
   const b = $('#xBell .badge');
   if (!b) return;
   // The new weekly digest counts as one more item until you open the drawer.
-  const n = notifData().urgent.length + (digestUnseen() ? 1 : 0);
+  const n = notifData().urgent.length + (digestUnseen() ? 1 : 0) + (typeof nbDue === 'function' ? nbDue().length : 0);
   b.textContent = n || '';
   b.hidden = !n;
   $('#xBell').title = digestUnseen() ? 'התראות · סיכום שבועי חדש' : 'התראות';
@@ -443,12 +443,15 @@ async function openNotifications() {
         : '<p class="muted">אין משימות דחופות 🎉</p>'}</div>
     <div class="notif-sec"><h3>🎯 מבחנים בשבועיים הקרובים</h3>
       ${d.exams.length ? d.exams.map(x => `<div class="notif-row"><span class="grow">${esc(x.t.title)}</span><small>${dueLabel(x.days)}</small></div>`).join('') : '<p class="muted">אין מבחנים קרובים.</p>'}</div>
+    ${(() => { const due = typeof nbDue === 'function' ? nbDue() : []; return due.length ? `<div class="notif-sec"><h3>🗑️ מחברות שנמחקו ב-Notability</h3>
+      <div class="notif-row" data-nbdue="1"><span class="grow">${due.length} מחברות נמחקו ב-Notability לפני 15+ ימים ועדיין בדרייב. למחוק גם משם?</span><small>לטפל ←</small></div></div>` : ''; })()}
     <div class="notif-sec"><h3>⏰ תזכורת 10 דקות לפני שיעור</h3>
       <label class="check"><input type="checkbox" id="notifToggle" ${enabled ? 'checked' : ''} ${window.Notification ? '' : 'disabled'}> התראה במכשיר הזה</label>
       <p class="muted">עובדת רק כשהאפליקציה פתוחה (דפדפן או PWA פתוחים ברקע). להתראות כשהאפליקציה סגורה, הוסף את המשימות ל-Google Tasks או ליומן.</p></div>
     ${closeBtn}`, form => {
     $$('[data-task]', form).forEach(r => r.onclick = () => { $('#modal').close(); setTimeout(() => editTask(r.dataset.task), 30); });
     $$('[data-course]', form).forEach(r => r.onclick = () => { $('#modal').close(); setTimeout(() => editCourse(r.dataset.course), 30); });
+    $$('[data-nbdue]', form).forEach(r => r.onclick = () => { $('#modal').close(); setTimeout(nbDueDialog, 30); });
     $$('[data-radar]', form).forEach(r => r.onclick = () => { $('#modal').close(); plannerTab = 'opps'; go('planner'); });
     $('#notifToggle', form).onchange = async e => {
       if (e.target.checked) {

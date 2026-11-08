@@ -21,6 +21,13 @@ const SCOPES = {
   drive: 'https://www.googleapis.com/auth/drive.appdata',
   calendar: 'https://www.googleapis.com/auth/calendar.readonly',
   tasks: 'https://www.googleapis.com/auth/tasks',
+  // Notability notebooks: names, folders, dates and thumbnails of your Drive files (not their content).
+  notes: 'https://www.googleapis.com/auth/drive.metadata.readonly',
+};
+// Asked for only when you first use what needs it (and kept afterwards by include_granted_scopes):
+// moving old Notability backups to the Drive trash needs full Drive access.
+const EXTRA_SCOPES = {
+  driveWrite: 'https://www.googleapis.com/auth/drive',
 };
 
 function lsGet(key, fallback = null) {
@@ -285,14 +292,16 @@ const Sync = {
   },
 
   // Scopes the current token actually carries (older connections only had Drive).
+  // Whole-word match: ".../auth/drive" is a prefix of ".../auth/drive.appdata".
   hasScope(name) {
-    try { return (JSON.parse(lsGet(LS_TOKEN, 'null'))?.scope || '').includes(SCOPES[name]); } catch { return false; }
+    const want = SCOPES[name] || EXTRA_SCOPES[name];
+    try { return (JSON.parse(lsGet(LS_TOKEN, 'null'))?.scope || '').split(/\s+/).includes(want); } catch { return false; }
   },
 
   redirectUri() { return location.origin + location.pathname; },
 
   // Full-page redirect (works inside installed PWAs on iOS, where popups don't).
-  authorize(silent = false) {
+  authorize(silent = false, extra = []) {
     if (!this.clientId) { this.setState('off', 'חסר Client ID'); return; }
     const stateToken = uid();
     sessionStorage.setItem('pp_oauth_state', stateToken);
@@ -300,7 +309,7 @@ const Sync = {
       client_id: this.clientId,
       redirect_uri: this.redirectUri(),
       response_type: 'token',
-      scope: Object.values(SCOPES).join(' '),
+      scope: [...Object.values(SCOPES), ...extra.map(k => EXTRA_SCOPES[k])].join(' '),
       include_granted_scopes: 'true',
       state: stateToken,
     });

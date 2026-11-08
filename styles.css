@@ -248,8 +248,11 @@ main { max-width: 1400px; margin: 0 auto; padding: 14px 20px 40px; }
 
 /* ---------- timetable ---------- */
 .today-strip { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 12px 0; font-size: .9rem; }
+.tt-modes { flex: 0 0 auto; }
+.tt-modes button { padding-inline: 12px; }
+.tt-nav { flex-wrap: nowrap; gap: 6px; }
 .tt-scroll { overflow-x: auto; margin-top: 12px; border-radius: 10px; }
-.tt { display: grid; grid-template-columns: 52px repeat(var(--days), minmax(110px, 1fr)); min-width: calc(52px + var(--days) * 110px); }
+.tt { display: grid; grid-template-columns: 52px repeat(var(--days), minmax(var(--colmin, 110px), 1fr)); min-width: calc(52px + var(--days) * var(--colmin, 110px)); }
 .tt-head { height: 42px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; border-bottom: 1px solid var(--line); line-height: 1.2; }
 .tt-head small { font-weight: 400; color: var(--muted); font-size: .72rem; }
 .tt-allday { display: flex; flex-direction: column; gap: 2px; padding: 0 2px; overflow: hidden; }

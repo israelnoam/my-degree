@@ -86,7 +86,11 @@ const EN = {
   'נשמר · יסונכרן ל-Google Tasks': 'Saved · will sync to Google Tasks', 'למשל: גיליון': 'e.g. Sheet', '— ללא —': '— none —',
 
   // ---------- timetable ----------
-  'השבוע': 'This week', 'שבוע קודם': 'Previous week', 'שבוע הבא': 'Next week', 'הוסף שיעור': 'Add class', 'מחולל מערכות': 'Timetable generator',
+  'השבוע': 'This week', '3 ימים': '3 days', 'שבוע': 'Week', 'תצוגה': 'View', 'יום קודם': 'Previous day', 'יום הבא': 'Next day', '3 ימים קודמים': 'Previous 3 days', '3 הימים הבאים': 'Next 3 days',
+  'בטלפון אפשר גם להחליק הצידה כדי לעבור בין הימים': 'On a phone you can also swipe sideways to move between days',
+  'אפליקציית הלמידה שלי': 'My learning app', 'נפתחת בלשונית חדשה. התיקייה במחשב': 'Opens in a new tab. Folder on the PC', 'העתק נתיב': 'Copy path',
+  'פותח את תיקיית הפרויקט ב-VS Code (במחשב הזה': 'Opens the project folder in VS Code (on this PC', 'מעתיק את נתיב התיקייה, להדבקה בסייר הקבצים': 'Copies the folder path, to paste in File Explorer',
+  'הנתיב הועתק. הדבק בשורת הכתובת של סייר הקבצים (Win+E': 'Path copied. Paste it in File Explorer’s address bar (Win+E', 'נתיב התיקייה': 'Folder path', 'שבוע קודם': 'Previous week', 'שבוע הבא': 'Next week', 'הוסף שיעור': 'Add class', 'מחולל מערכות': 'Timetable generator',
   'שיעורים שהוספת כאן חוזרים כל שבוע. אירועים מ-Google Calendar מוצגים בצבע של היומן שלהם. לחץ על משבצת ריקה כדי להוסיף שיעור': 'Classes you add here repeat every week. Google Calendar events show in their calendar’s color. Click an empty slot to add a class',
   'שיעור חדש': 'New class', 'עריכת שיעור': 'Edit class', 'או כותרת חופשית': 'or a free title', 'למשל: שעת קבלה': 'e.g. office hours', 'יום': 'Day', 'התחלה': 'Start', 'סיום': 'End',
   'מיקום': 'Location', 'למשל: דן קאהן': 'e.g. Dan Kahn', 'בחר קורס או כתוב כותרת': 'Pick a course or write a title', 'שעת הסיום חייבת להיות אחרי ההתחלה': 'The end time must be after the start',
