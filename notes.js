@@ -299,22 +299,31 @@ function nbMapDialog() {
 
 // ---------- one course's notebooks ----------
 function nbCourseDialog(code) {
-  const list = NB.notesFor(code).sort((a, b) => b.mod.localeCompare(a.mod));
+  nbFilesDialog(`📓 ${esc(courseLabel(code))} <small class="muted">${NB.notesFor(code).length} מחברות</small>`, NB.notesFor(code),
+    'נפתח בצפיין של Google Drive. מתעדכן אחרי שעורכים מחברת וחוזרים לספרייה ב-Notability (ורענון כאן).',
+    'אין מחברות בתיקיות שמשויכות לקורס הזה.');
+}
+
+// A searchable list of Drive files grouped by sub-folder (f.cat), newest first.
+function nbFilesDialog(heading, files, hint, empty, extra = '', onReady) {
+  const list = [...files].sort((a, b) => b.mod.localeCompare(a.mod));
   const cats = {};
   for (const f of list) (cats[f.cat || 'כללי'] ||= []).push(f);
-  const size = n => n > 1e6 ? `${(n / 1e6).toFixed(1)}MB` : `${Math.max(1, Math.round(n / 1e3))}KB`;
+  const size = n => !n ? '' : ' · ' + (n > 1e6 ? `${(n / 1e6).toFixed(1)}MB` : `${Math.max(1, Math.round(n / 1e3))}KB`);
   const row = f => `<a class="nb-note" href="${esc(f.link)}" target="_blank" rel="noopener" data-name="${esc(norm(f.name))}">
       <span class="nb-thumb">${f.thumb ? `<img loading="lazy" referrerpolicy="no-referrer" src="${esc(f.thumb)}" alt="">` : ''}📄</span>
-      <span class="nb-meta"><b>${esc(f.name.replace(/\.pdf$/i, ''))}</b><small class="muted">עודכן ${esc(new Date(f.mod).toLocaleDateString(LOCALE, { day: 'numeric', month: 'numeric', year: '2-digit' }))} · ${size(f.size)}</small></span>
+      <span class="nb-meta"><b>${esc(f.name.replace(/\.pdf$/i, ''))}</b><small class="muted">עודכן ${esc(new Date(f.mod).toLocaleDateString(LOCALE, { day: 'numeric', month: 'numeric', year: '2-digit' }))}${size(f.size)}</small></span>
     </a>`;
   openWide(`
-    <h2>📓 ${esc(courseLabel(code))} <small class="muted">${list.length} מחברות</small></h2>
+    <h2>${heading}</h2>
+    ${extra}
     <input type="search" id="nbFilter" placeholder="🔍 חיפוש לפי שם…" style="width:100%;margin:6px 0 4px">
-    <p class="muted small">נפתח בצפיין של Google Drive. מתעדכן אחרי שעורכים מחברת וחוזרים לספרייה ב-Notability (ורענון כאן).</p>
-    ${Object.entries(cats).sort(([a], [b]) => a.localeCompare(b, 'he')).map(([cat, files]) =>
+    <p class="muted small">${hint}</p>
+    ${Object.entries(cats).sort(([a], [b]) => a === 'כללי' ? -1 : b === 'כללי' ? 1 : a.localeCompare(b, 'he')).map(([cat, files]) =>
       `<details class="nb-cat" open><summary><b>${esc(cat)}</b> <small class="muted">${files.length}</small></summary><div class="nb-grid">${files.map(row).join('')}</div></details>`).join('')
-      || '<p class="muted">אין מחברות בתיקיות שמשויכות לקורס הזה.</p>'}
+      || `<p class="muted">${empty}</p>`}
     ${closeBtn}`, form => {
+    onReady?.(form);
     $$('.nb-thumb img', form).forEach(img => { img.onload = () => img.parentNode.classList.add('has-img'); img.onerror = () => img.remove(); });
     const filter = $('#nbFilter', form);
     filter.oninput = () => {
@@ -323,6 +332,131 @@ function nbCourseDialog(code) {
       $$('.nb-cat', form).forEach(d => { d.hidden = !$$('.nb-note:not([hidden])', d).length; });
     };
   });
+}
+
+// ---------- each course's own Drive folder (materials, homework, exams…) ----------
+// Linked once per course (saved on the course, so it syncs to every device). Opening it reads
+// the folder and its sub-folders again when the saved copy is over 10 minutes old.
+const LS_CDRIVE = 'pp_cdrive_v1';
+const CDrive = {
+  cache: null,  // { code: { at, folder, files: [...] } }
+  loading: {},
+  load() { if (!this.cache) { try { this.cache = JSON.parse(lsGet(LS_CDRIVE, '{}')) || {}; } catch { this.cache = {}; } } return this.cache; },
+  save() { lsSet(LS_CDRIVE, JSON.stringify(this.cache)); },
+  // Accepts a Drive folder link (…/folders/<id>, ?id=<id>) or a bare id.
+  parse(s) {
+    s = String(s || '').trim();
+    const m = s.match(/folders\/([\w-]{10,})/) || s.match(/[?&]id=([\w-]{10,})/) || s.match(/^([\w-]{20,})$/);
+    return m ? m[1] : '';
+  },
+  entry(code) { const c = courseByCode(code), e = this.load()[code]; return c?.drive && e?.folder === c.drive ? e : null; },
+  count(code) { return this.entry(code)?.files.length || 0; },
+
+  async scan(code, interactive = false) {
+    const c = courseByCode(code);
+    if (!c?.drive || !NB.canRead() || !(interactive ? Sync.ensureToken() : Sync.token())) return;
+    if (this.loading[code]) return this.loading[code];
+    this.loading[code] = (async () => {
+      const names = { [c.drive]: [] }, files = [];
+      let queue = [c.drive];
+      while (queue.length) {
+        const batch = queue.splice(0, 30);
+        const q = `(${batch.map(id => `'${id}' in parents`).join(' or ')}) and trashed = false`;
+        for (const it of await NB.listAll(q, 'id,name,mimeType,parents,modifiedTime,size,thumbnailLink,webViewLink')) {
+          const parent = (it.parents || []).find(p => batch.includes(p));
+          if (it.mimeType === NB_FOLDER) { names[it.id] = [...names[parent], it.name]; queue.push(it.id); }
+          else files.push({ id: it.id, name: it.name, mod: it.modifiedTime, size: +it.size || 0, thumb: it.thumbnailLink || '', link: it.webViewLink || '', cat: names[parent].join(' / ') });
+        }
+      }
+      this.load()[code] = { at: Date.now(), folder: c.drive, files };
+      this.save();
+    })().finally(() => { delete this.loading[code]; });
+    return this.loading[code];
+  },
+  refreshIfStale(code, onDone) {
+    const e = this.entry(code);
+    if (courseByCode(code)?.drive && (!e || Date.now() - e.at > NB_STALE_MS) && !this.loading[code]) this.scan(code).then(onDone, () => {});
+  },
+
+  // Folders in your Drive whose name looks like this course (by name or number), Notability's left out.
+  async suggest(c) {
+    const word = nbWords(c.name).find(w => w.length > 2 && !/^\d+$/.test(w)) || c.name;
+    const digits = String(c.code).replace(/^0+/, '');
+    const q = `mimeType = '${NB_FOLDER}' and trashed = false and (name contains '${word.replace(/'/g, "\\'")}' or name contains '${digits}')`;
+    const found = await NB.listAll(q, 'id,name,modifiedTime');
+    const inNotability = new Set(Object.keys(NB.loadCache()?.folders || {}));
+    return found.filter(f => !inNotability.has(f.id) && (nbSuggest(f.name) === c.code || f.name.includes(digits)))
+      .sort((a, b) => b.modifiedTime.localeCompare(a.modifiedTime)).slice(0, 6);
+  },
+};
+
+function cdriveButtons(c) {
+  if (!c.drive) return `<button type="button" class="btn small" data-cdset="${esc(c.code)}" title="קשר לקורס תיקייה מה-Google Drive שלך (חומרים, תרגילים, מבחנים)">📁 תיקיית Drive</button>`;
+  const n = CDrive.count(c.code);
+  return `<button type="button" class="btn small" data-cdopen="${esc(c.code)}" title="הקבצים בתיקיית הדרייב של הקורס">📁 Drive${n ? ` (${n})` : ''}</button>`;
+}
+function bindCdrive(root) {
+  $$('[data-cdset]', root).forEach(b => b.onclick = () => cdriveLinkDialog(b.dataset.cdset));
+  $$('[data-cdopen]', root).forEach(b => b.onclick = () => cdriveDialog(b.dataset.cdopen));
+  // Keep the counts fresh for the courses on screen.
+  for (const b of $$('[data-cdopen]', root)) CDrive.refreshIfStale(b.dataset.cdopen, () => { if (currentView === 'tools') render(); });
+}
+
+function cdriveNeedsAccess() {
+  if (NB.canRead()) return false;
+  if (confirm('כדי לקרוא את תיקיות הדרייב, Google צריך לאשר לאפליקציה לראות שמות של קבצים ותיקיות (לא את התוכן שלהם). להמשיך?')) Sync.connected ? Sync.authorize() : connectGoogle();
+  return true;
+}
+
+function cdriveLinkDialog(code) {
+  const c = courseByCode(code);
+  if (!c || cdriveNeedsAccess()) return;
+  openModal(`
+    <h2>📁 תיקיית Drive · ${esc(c.name)}</h2>
+    <p class="muted">תיקייה מה-Google Drive שלך עם החומרים של הקורס. הקבצים שלה (כולל תתי-תיקיות) יופיעו כאן ויתעדכנו לבד. קריאה בלבד: שום דבר לא משתנה בדרייב.</p>
+    <div id="cdSug" class="nb-map"><p class="muted small">מחפש בדרייב תיקיות שמתאימות לקורס…</p></div>
+    <label class="field"><span class="field-label">או הדבק קישור לתיקייה</span><input name="url" dir="ltr" value="${c.drive ? `https://drive.google.com/drive/folders/${esc(c.drive)}` : ''}" placeholder="https://drive.google.com/drive/folders/…"></label>
+    <p class="bad small" id="cdErr"></p>
+    <div class="actions">
+      ${c.drive ? '<button class="btn danger" value="remove" formnovalidate>נתק תיקייה</button>' : ''}
+      <button class="btn" value="cancel" formnovalidate>ביטול</button>
+      <button class="btn primary" value="save">שמור</button>
+    </div>`, (action, fd) => {
+    if (action === 'remove') { Store.put('course', code, { drive: '' }); render(); return; }
+    if (action !== 'save') return;
+    const id = String(fd.get('pick') || '') || CDrive.parse(fd.get('url'));
+    if (!id) { $('#cdErr').textContent = 'בחר תיקייה מהרשימה או הדבק קישור לתיקייה בדרייב (…/folders/…).'; return false; }
+    Store.put('course', code, { drive: id });
+    CDrive.scan(code, true).then(() => { toast('התיקייה קושרה לקורס'); render(); }).catch(e => toast('לא הצלחתי לקרוא את התיקייה: ' + e.message));
+  }, form => {
+    CDrive.suggest(c).then(list => {
+      const box = $('#cdSug', form);
+      if (!box) return;
+      box.innerHTML = list.length ? `<h4>נמצאו בדרייב</h4>${list.map((f, i) => `<label class="check nb-map-row"><input type="radio" name="pick" value="${esc(f.id)}" ${f.id === c.drive || (!c.drive && i === 0) ? 'checked' : ''}>
+          <span>📁 ${esc(f.name)} <small class="muted">עודכן ${esc(new Date(f.modifiedTime).toLocaleDateString(LOCALE))}</small></span>
+          <a class="btn small" href="https://drive.google.com/drive/folders/${esc(f.id)}" target="_blank" rel="noopener">↗</a></label>`).join('')}
+          <label class="check nb-map-row"><input type="radio" name="pick" value=""> <span>אף אחת מאלה (הקישור למטה)</span></label>`
+        : '<p class="muted small">לא מצאתי תיקייה עם שם הקורס או המספר שלו. הדבק קישור למטה.</p>';
+    }).catch(e => { const box = $('#cdSug', form); if (box) box.innerHTML = `<p class="bad small">החיפוש בדרייב נכשל: ${esc(e.message)}</p>`; });
+  });
+}
+
+function cdriveDialog(code) {
+  const c = courseByCode(code);
+  if (!c?.drive || cdriveNeedsAccess()) return;
+  const e = CDrive.entry(code);
+  const when = e ? new Date(e.at).toLocaleString(LOCALE, { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+  nbFilesDialog(`📁 ${esc(c.name)} <small class="muted">${e ? e.files.length + ' קבצים' : 'טוען…'}</small>`, e?.files || [],
+    `נפתח בצפיין של Google Drive.${when ? ` עודכן ${when}.` : ''}`, e ? 'התיקייה ריקה.' : 'קורא את התיקייה מהדרייב…',
+    `<div class="row wrap"><button type="button" class="btn small" id="cdRefresh">🔄 רענן</button>
+      <a class="btn small" href="https://drive.google.com/drive/folders/${esc(c.drive)}" target="_blank" rel="noopener">↗ פתח בדרייב</a>
+      <button type="button" class="btn small" id="cdChange">⚙️ החלף תיקייה</button></div>`,
+    form => {
+      const again = () => { if ($('#modal').open && $('#cdRefresh')) { $('#modal').close(); cdriveDialog(code); } };
+      $('#cdRefresh', form).onclick = () => { $('#cdRefresh', form).disabled = true; CDrive.scan(code, true).then(() => { again(); render(); }, err => toast('הרענון נכשל: ' + err.message)); };
+      $('#cdChange', form).onclick = () => { $('#modal').close(); setTimeout(() => cdriveLinkDialog(code), 30); };
+      if (!e || Date.now() - e.at > NB_STALE_MS) CDrive.scan(code).then(() => { again(); render(); }, () => {});
+    });
 }
 
 // ---------- notes deleted in Notability ----------

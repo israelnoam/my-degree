@@ -151,6 +151,7 @@ function renderTools(root) {
   $$('[data-pzip]', root).forEach(b => b.onclick = () => pangeaZip(b.dataset.pzip, b));
   bindPanopto(root);
   bindNbSection(root);
+  bindCdrive(root);
   $$('[data-opensheet]', root).forEach(b => b.onclick = () => { fsOpenId = b.dataset.opensheet; go('formula'); });
   $$('[data-newsheet]', root).forEach(b => b.onclick = () => { go('formula'); fsNewSheet(b.dataset.newsheet); });
 
@@ -209,6 +210,7 @@ function courseToolsRow(c) {
               <button type="button" class="btn small" data-pzip="${esc(c.code)}" title="מוריד את כל ${pg.pages.length} הדפים של הקורס, כל דף כ-PDF, בקובץ ZIP אחד">⬇️ ZIP (${pg.pages.length})</button>`
         : Pangea.index ? '' : '<span class="muted small">💧 בודק בפנגייה…</span>'}
       ${NB.countFor(c.code) ? `<button type="button" class="btn small" data-nbopen="${esc(c.code)}">📓 מחברות (${NB.countFor(c.code)})</button>` : ''}
+      ${cdriveButtons(c)}
       ${sheet ? `<button type="button" class="btn small" data-opensheet="${esc(sheet.id)}">📐 הנוסחאון</button>`
         : `<button type="button" class="btn small" data-newsheet="${esc(c.code)}">📐 נוסחאון חדש</button>`}
     </div>

@@ -31,7 +31,8 @@ button.tl-card { cursor: pointer; font: inherit; padding: 0; width: 100%; }
 .tl-app { border-color: color-mix(in srgb, var(--brand) 50%, var(--line)); background: linear-gradient(135deg, color-mix(in srgb, var(--brand) 16%, var(--panel-2)), var(--panel-2)); }
 .tl-app-acts { display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 6px 10px; }
 .tl-app-acts .btn { white-space: nowrap; text-decoration: none; }
-@media (max-width: 600px) { .tl-app-acts { flex-direction: row; } div.tl-app { flex-wrap: wrap; } }
+/* VS Code and the folder path only mean something on the PC: hidden on phones and tablets. */
+@media (max-width: 600px), (hover: none) and (pointer: coarse) { .tl-app-acts { display: none; } }
 .tl-badge { align-self: center; margin-inline-end: 12px; font-size: .75rem; padding: 2px 8px; border-radius: 99px; background: var(--brand); color: #fff; font-weight: 700; }
 .nb-box { background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: grid; gap: 10px; }
 .nb-head { justify-content: space-between; }
