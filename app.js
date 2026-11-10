@@ -1357,29 +1357,54 @@ async function importBackup(e) {
 
 // ---------- boot ----------
 // Runs after every script (including google.js) has loaded.
+// Each step is guarded: one failing step (a bad record, a script error) must never
+// leave a blank page. The app still draws, and the first error is shown on screen.
+const bootErrors = [];
+function bootStep(name, fn) {
+  try { fn(); } catch (err) { console.error(`[boot] ${name}`, err); bootErrors.push(`${name}: ${err?.message || err}`); }
+}
+function showBootErrors() {
+  if (!bootErrors.length || $('#bootError')) return;
+  const box = document.createElement('div');
+  box.id = 'bootError';
+  box.className = 'card';
+  box.style.cssText = 'margin:12px;border:1px solid var(--red);';
+  box.innerHTML = `<h2>⚠️ חלק מהאפליקציה לא נטען</h2>
+    <p class="muted">שלח את השורה הזו כדי שנוכל לתקן:</p>
+    <pre dir="ltr" style="white-space:pre-wrap;user-select:all">${esc(bootErrors.join('\n'))}</pre>
+    <p>הנתונים שלך לא נמחקו. אפשר לנסות "ייצוא גיבוי" מההגדרות.</p>`;
+  $('#view').before(box);
+}
 window.addEventListener('DOMContentLoaded', () => {
-  Store.load();
-  seedData();
+  bootStep('load', () => Store.load());
+  bootStep('seed', () => seedData());
   // Data updates run after Drive's copy is pulled in (a sync hook), or right away when not syncing.
-  Sync.hooks.unshift(async () => runMigrations());
-  if (!Sync.connected) runMigrations();
+  bootStep('migrations', () => {
+    Sync.hooks.unshift(async () => runMigrations());
+    if (!Sync.connected) runMigrations();
+  });
   Store.onChange(() => render());
-  $('#importFile').onchange = importBackup;
-  $('#gradeFile').onchange = importGradeSheet;
+  bootStep('inputs', () => {
+    $('#importFile').onchange = importBackup;
+    $('#gradeFile').onchange = importGradeSheet;
+  });
   let shownTaskError = null;
-  Sync.onStatus(state => {
+  bootStep('sync-status', () => Sync.onStatus(state => {
     renderSyncBtn(state);
     if (currentView === 'settings' && document.activeElement?.id !== 'clientId') render();
     // Show (or clear) a Google Tasks problem on the tasks page once a sync finishes.
     if (currentView === 'tasks' && state !== 'syncing' && (Sync.hookError?.message !== shownTaskError || $('[data-gbar="sync"][disabled]'))) render();
     if (state !== 'syncing') shownTaskError = Sync.hookError?.message;
-  });
+  }));
   try { currentView = localStorage.getItem('pp_view') || 'map'; } catch {}
-  if (welcomeParam) currentView = 'map';
+  if (typeof welcomeParam !== 'undefined' && welcomeParam) currentView = 'map';
   if (!$(`#tabs [data-view="${currentView}"]`) && !['performance', 'settings', 'formula', 'cv'].includes(currentView)) currentView = 'map';
-  go(currentView);
-  Sync.start();
-  renderSyncBtn(Sync.state);
+  bootStep('first screen', () => go(currentView));
+  // If the saved screen failed, fall back to the course map.
+  if (!$('#view').children.length) { currentView = 'map'; bootStep('map', () => go('map')); }
+  bootStep('sync', () => Sync.start());
+  bootStep('sync button', () => renderSyncBtn(Sync.state));
+  showBootErrors();
 });
 
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
