@@ -497,7 +497,7 @@ function applyImport(parsed, replace) {
 const COURSE_TOOLS = [['234128', 'Python'], ['034061', 'SolidWorks'], ['034056', 'MATLAB']];
 
 // Where you are in the degree: current semester, how many are left, and the study year.
-function degreeProgress() {
+function cvSemesterProgress() {
   const total = +settings().semesters || 8;
   const cur = typeof currentSemesterNumber === 'function' ? currentSemesterNumber() : 1;
   const now = Math.min(Math.max(cur, 1), total);
@@ -517,7 +517,7 @@ function heavyCourses(n = 5) {
 function fillFromDegree() {
   const p = cvProfile();
   const s = computeStats();
-  const prog = degreeProgress();
+  const prog = cvSemesterProgress();
   const heavy = heavyCourses();
   const honors = typeof semesterStats === 'function'
     ? semesterStats().filter(x => honorFor(x)).map(x => `${honorFor(x) === 'president' ? 'הצטיינות נשיא' : 'הצטיינות דיקן'} – ${semName(x.sem)}`) : [];
@@ -548,7 +548,7 @@ function fillFromDegree() {
 // --- summary builder: degree + the job you're after + the Atidim line ---
 function draftSummary({ lang, gender, role, atidim }) {
   const s = computeStats();
-  const prog = degreeProgress();
+  const prog = cvSemesterProgress();
   const gpa = s.gpa ? fmt(s.gpa, 1) : '';
   const f = gender === 'f';
   if (lang === 'en') {

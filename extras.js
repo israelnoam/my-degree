@@ -671,5 +671,6 @@ function injectViewButtons() {
   const baseRender = render;
   render = function () { baseRender(); injectViewButtons(); updateBell(); };
   addHeaderButtons();
-  render();
+  // No render() here: tools.js and formula.js haven't loaded yet. The app's
+  // DOMContentLoaded start-up (app.js) draws the first screen through this wrapper.
 })();
