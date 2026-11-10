@@ -590,10 +590,28 @@ h4.bucket-title { margin: 10px 0 6px; font-size: .85rem; }
 .chip.miss { border-color: var(--orange); color: var(--orange); }
 .cv-notes { padding-inline-start: 18px; margin: 6px 0 0; font-size: .9rem; display: flex; flex-direction: column; gap: 4px; }
 .narrow-block { max-width: 640px; }
+.cv-tip { font-size: .82rem; color: var(--muted); margin: 2px 0 8px; line-height: 1.45; }
+.cv-checks { background: var(--bg-2); border: 1px solid var(--line); border-inline-start: 4px solid var(--green); border-radius: 10px; padding: 8px 12px; margin: 0 0 10px; font-size: .88rem; }
+.cv-checks.has-warn { border-inline-start-color: var(--orange); }
+.cv-checks.has-bad { border-inline-start-color: var(--red); }
+.cv-checks > summary { cursor: pointer; }
+.cv-checks ul { list-style: none; padding: 0; margin: 8px 0 0; display: flex; flex-direction: column; gap: 4px; }
+.cv-checks .ck-bad { color: var(--red); }
+.cv-checks .ck-warn { color: var(--orange); }
+.cv-checks .ck-ok { color: var(--green); }
+.cv-checks .cv-pages { color: var(--muted); font-weight: 400; }
+.cv-checks .cv-pages.over { color: var(--orange); }
+.cv-editor > .cv-checks { margin-top: 12px; }
+.cv-apply { margin-top: 10px; }
+.cv-tips { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.cv-tipcard { background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; line-height: 1.55; }
+.cv-tipcard h3 { margin: 0 0 8px; }
+.cv-tipcard ol, .cv-tipcard ul { padding-inline-start: 20px; margin: 0 0 8px; display: flex; flex-direction: column; gap: 4px; }
+.cv-tipcard p { margin: 0 0 8px; }
 
 /* the CV page itself: light paper, single column, ATS-friendly */
 .cv-page { background: #fff; color: #1d2433; width: 100%; max-width: 794px; margin: 0 auto; padding: 36px 40px; border-radius: 4px;
-  font: 13.5px/1.45 "Segoe UI", Arial, "Rubik", sans-serif; box-shadow: 0 2px 12px rgba(0,0,0,.15); }
+  font: 13.5px/1.45 Arial, "Segoe UI", sans-serif; box-shadow: 0 2px 12px rgba(0,0,0,.15); }
 .cv-page h1 { font-size: 26px; margin: 0; color: #0f172a; }
 .cv-page .cv-label { font-size: 15px; color: #334155; margin-top: 2px; }
 .cv-page .cv-contacts { display: flex; flex-wrap: wrap; gap: 6px; font-size: 12.5px; color: #475569; margin-top: 6px; }
@@ -604,15 +622,15 @@ h4.bucket-title { margin: 10px 0 6px; font-size: .85rem; }
 .cv-page .cv-item { margin-bottom: 9px; break-inside: avoid; }
 .cv-page .cv-row { display: flex; justify-content: space-between; gap: 12px; }
 .cv-page .cv-meta { color: #475569; white-space: nowrap; font-size: 12.5px; }
-.cv-page .cv-sub { color: #334155; font-style: italic; }
+.cv-page .cv-sub { color: #334155; }
 .cv-page ul { margin: 3px 0 0; padding-inline-start: 18px; }
 .cv-page li { margin: 1px 0; }
 .cv-page .cv-skill { margin-bottom: 3px; }
 .cv-page.t-classic .cvh { text-align: center; }
 .cv-page.t-classic .cv-contacts { justify-content: center; }
-.cv-page.t-modern .cvh { border-inline-start: 5px solid #2563eb; padding-inline-start: 14px; }
-.cv-page.t-modern h1, .cv-page.t-modern .cvs h2 { color: #1d4ed8; }
-.cv-page.t-modern .cvs h2 { border-bottom-color: #93c5fd; }
+/* "clean": header aligned to the start, lighter rules; still black text only (ATS) */
+.cv-page.t-modern .cvh { text-align: start; }
+.cv-page.t-modern .cvs h2 { text-transform: none; letter-spacing: 0; font-size: 14.5px; border-bottom: 1px solid #94a3b8; }
 .cv-page.t-compact { font-size: 12px; padding: 26px 30px; }
 .cv-page.t-compact h1 { font-size: 21px; }
 .cv-page.t-compact .cvs { margin-top: 9px; }

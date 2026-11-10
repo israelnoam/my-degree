@@ -24,8 +24,11 @@ const TOOL_LINKS = [
   ['phonebook', 'campus', 'ספר טלפונים', 'אנשי סגל ויחידות', 'https://my.technion.ac.il/phonebook', '☎️', '#78716c'],
   ['sport', 'campus', 'מרכז הספורט', 'מנוי, חוגים ושעות פתיחה', 'https://www.sport-tc.com/', '🏋️', '#ea580c'],
   ['asat', 'campus', 'אגודת הסטודנטים', 'זכויות סטודנטים, מלגות ואירועים', 'https://www.asat.org.il/', '🤝', '#db2777'],
+
+  ['atidim-career', 'career', 'קריירה · עתידים', 'הפלטפורמה של רכזת הקריירה: מדריך, דגשים לקו״ח וראיונות', 'https://careeratidim2.netlify.app', '🚀', '#0284c7'],
+  ['gitready', 'career', 'GitReady', 'סידור הפרויקטים שלך ב-GitHub לתיק עבודות', 'https://gitready-alpha.vercel.app/', '🐙', '#24292f'],
 ];
-const TOOL_GROUPS = { pinned: '📌 מוצמדים', study: '📖 לימודים', admin: '🧾 מנהלה וציונים', campus: '🏫 קמפוס ושירותים', mine: '⭐ הקישורים שלי' };
+const TOOL_GROUPS = { pinned: '📌 מוצמדים', study: '📖 לימודים', admin: '🧾 מנהלה וציונים', campus: '🏫 קמפוס ושירותים', career: '💼 קריירה', mine: '⭐ הקישורים שלי' };
 
 let toolsQuery = '';
 let toolsShowHidden = false;
@@ -133,7 +136,7 @@ function renderTools(root) {
       <h3 class="tl-group">📓 מחברות Notability</h3>
       ${nbSectionHtml()}
 
-      ${['study', 'admin', 'campus', 'mine'].map(g => section(g, byGroup(g))).join('')}
+      ${['study', 'admin', 'campus', 'career', 'mine'].map(g => section(g, byGroup(g))).join('')}
       ${!links.length ? '<p class="muted">לא נמצאו אתרים שמתאימים לחיפוש.</p>' : ''}
     </section>`;
 
@@ -419,9 +422,11 @@ const FS_TOUR = [
 const CV_TOUR = [
   { view: 'cv', run: () => { cvTab = 'profile'; render(); }, title: '📄 מחולל קורות החיים', text: 'פרופיל אחד עם כל מה שעשית, וממנו גרסה מותאמת לכל משרה. הכול מסתנכרן ל-Google Drive.' },
   { view: 'cv', sel: '#cvImport', title: '📥 ייבוא קו״ח קיים', text: 'טוען קובץ PDF או Word, מזהה את החלקים (השכלה, ניסיון, פרויקטים…) ומראה לך מה נמצא לפני שהוא נשמר.' },
-  { view: 'cv', sel: '#cvFromDegree', title: '🎓 השכלה מהתואר', text: 'ממלא את ההשכלה מהאפליקציה: התואר, הממוצע והקורסים הבולטים.' },
-  { view: 'cv', run: () => { cvTab = 'profile'; render(); }, sel: '#cvBody', title: '👤 הפרופיל שלי', text: 'כל החלקים של קורות החיים. כתוב כאן הכול, גם מה שלא תמיד נכנס: ההתאמה למשרה בוחרת מה להציג.' },
-  { view: 'cv', run: () => { cvTab = 'target'; render(); }, sel: '#cvBody', title: '🎯 התאמה למשרה', text: 'מדביקים מודעת דרושים, והגרסה מסתדרת לפי מילות המפתח שבה, או עם AI שכותב אותה מחדש. משם מדפיסים או שומרים PDF.' },
+  { view: 'cv', sel: '#cvFromDegree', title: '🎓 השכלה מהתואר', text: 'ממלא את ההשכלה מהאפליקציה: יתרת הסמסטרים, הממוצע, הציונים בקורסים הכבדים והכלים שלמדת.' },
+  { view: 'cv', run: () => { cvTab = 'profile'; render(); }, sel: '#cvBody', title: '👤 הפרופיל שלי', text: 'כל החלקים של קורות החיים, עם דגש קצר בכל חלק לפי ההנחיות של עתידים. "✍️ בנה תקציר" כותב טיוטה לתקציר.' },
+  { view: 'cv', run: () => { cvTab = 'profile'; render(); }, sel: '#cvChecks', title: '🩺 בדיקת קו״ח', text: 'בודקת את קורות החיים מול הדגשים: פרטי קשר, תקציר, השכלה, אימפקט בעבודה, אורך של עמוד אחד, ואין אייקונים או עברית בגרסה באנגלית.' },
+  { view: 'cv', run: () => { cvTab = 'target'; render(); }, sel: '#cvBody', title: '🎯 התאמה למשרה', text: 'מדביקים מודעת דרושים, והגרסה מסתדרת לפי מילות המפתח שבה, או עם AI שכותב אותה מחדש. מודעה באנגלית עוברת אוטומטית לקו״ח באנגלית. ב"הגשה ותהליך" רושמים איש קשר בחברה ואת שלבי הראיונות.' },
+  { view: 'cv', run: () => { cvTab = 'tips'; render(); }, sel: '#cvBody', title: '💡 דגשים וראיונות', text: 'הדגשים של רכזת הקריירה בעתידים: מבנה קו״ח, הגשה דרך עובד בחברה, איך לענות על "למה עזבת" ומה ללבוש.' },
   { view: 'cv', run: () => { cvTab = 'ai'; render(); }, sel: '#cvBody', title: '🤖 הגדרות AI', text: 'מפתח API של Anthropic (נשמר רק במכשיר הזה). אותו מפתח משמש גם את יועץ התואר ואת מחולל הנוסחאונים.' },
   { run: () => { cvTab = 'profile'; render(); }, title: '🎉 זהו!', text: 'את המדריך אפשר לפתוח שוב בכפתור "🎓 מדריך" בראש המסך.' },
 ];
