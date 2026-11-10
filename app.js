@@ -1360,10 +1360,22 @@ async function importBackup(e) {
 // Each step is guarded: one failing step (a bad record, a script error) must never
 // leave a blank page. The app still draws, and the first error is shown on screen.
 const bootErrors = [];
+const LS_BOOTING = 'pp_booting';
+const VIEW_NAMES = { map: 'מפת קורסים', planner: 'תכנון תואר', tasks: 'משימות', timetable: 'מערכת שעות', tools: 'כלים', cv: 'קורות חיים', formula: 'מחולל נוסחאונים', performance: 'מרכז ביצועים', settings: 'הגדרות' };
+let bootNotice = '';
 function bootStep(name, fn) {
   try { fn(); } catch (err) { console.error(`[boot] ${name}`, err); bootErrors.push(`${name}: ${err?.message || err}`); }
 }
 function showBootErrors() {
+  if (bootNotice && !$('#bootNotice')) {
+    const n = document.createElement('div');
+    n.id = 'bootNotice';
+    n.className = 'card';
+    n.style.cssText = 'margin:12px;border:1px solid var(--orange);';
+    n.innerHTML = `<b>⚠️ ${esc(bootNotice)}</b> <button class="btn small" type="button">סגור</button>`;
+    n.querySelector('button').addEventListener('click', () => n.remove());
+    $('#view').before(n);
+  }
   if (!bootErrors.length || $('#bootError')) return;
   const box = document.createElement('div');
   box.id = 'bootError';
@@ -1399,6 +1411,18 @@ window.addEventListener('DOMContentLoaded', () => {
   try { currentView = localStorage.getItem('pp_view') || 'map'; } catch {}
   if (typeof welcomeParam !== 'undefined' && welcomeParam) currentView = 'map';
   if (!$(`#tabs [data-view="${currentView}"]`) && !['performance', 'settings', 'formula', 'cv'].includes(currentView)) currentView = 'map';
+  // Freeze recovery: a mark is set while the app starts and cleared once it has run for a
+  // few seconds. If the mark is still there, the last start froze (the page hung), so this
+  // time open the course map instead of the screen that froze.
+  const froze = lsGet(LS_BOOTING, '');
+  if (froze) {
+    console.warn('[boot] last start froze on', froze);
+    if (froze !== 'map') bootNotice = `בפעם הקודמת האפליקציה נתקעה במסך "${VIEW_NAMES[froze] || froze}", אז נפתחה מפת הקורסים. אם זה חוזר במסך הזה, צלם ושלח.`;
+    else bootNotice = 'בפעם הקודמת האפליקציה נתקעה כבר במפת הקורסים. אם זה חוזר, צלם ושלח.';
+    currentView = 'map';
+  }
+  lsSet(LS_BOOTING, currentView);
+  setTimeout(() => { try { localStorage.removeItem(LS_BOOTING); } catch {} }, 8000);
   bootStep('first screen', () => go(currentView));
   // If the saved screen failed, fall back to the course map.
   if (!$('#view').children.length) { currentView = 'map'; bootStep('map', () => go('map')); }

@@ -58,14 +58,17 @@ const NB = {
         const folders = {}, files = [];
         let queue = roots.map(r => r.id);
         for (const r of roots) folders[r.id] = { id: r.id, name: r.name, parent: null };
+        const seenFiles = new Set();
         while (queue.length) {
           const batch = queue.splice(0, 30);
           const q = `(${batch.map(id => `'${id}' in parents`).join(' or ')}) and trashed = false`;
           const items = await this.listAll(q, 'id,name,mimeType,parents,modifiedTime,createdTime,size,thumbnailLink,webViewLink');
           for (const it of items) {
             const parent = (it.parents || []).find(p => batch.includes(p)) || it.parents?.[0];
-            if (it.mimeType === NB_FOLDER) { folders[it.id] = { id: it.id, name: it.name, parent }; queue.push(it.id); }
-            else files.push({ id: it.id, name: it.name, parent, mod: it.modifiedTime, created: it.createdTime, size: +it.size || 0, thumb: it.thumbnailLink || '', link: it.webViewLink || '' });
+            // A folder (or file) reachable twice (more than one parent) is read once, so a
+            // folder that loops back to its own ancestors can't make the scan run forever.
+            if (it.mimeType === NB_FOLDER) { if (!folders[it.id]) { folders[it.id] = { id: it.id, name: it.name, parent }; queue.push(it.id); } }
+            else if (!seenFiles.has(it.id) && seenFiles.add(it.id)) files.push({ id: it.id, name: it.name, parent, mod: it.modifiedTime, created: it.createdTime, size: +it.size || 0, thumb: it.thumbnailLink || '', link: it.webViewLink || '' });
           }
         }
         this.tree = { at: Date.now(), roots: roots.map(r => r.id), folders, files };
@@ -122,8 +125,15 @@ const NB = {
   },
 
   // ---------- where a file belongs ----------
-  depth(id) { let d = 0; for (let f = this.tree.folders[id]; f?.parent; f = this.tree.folders[f.parent]) d++; return d; },
-  path(id) { const out = []; for (let f = this.tree.folders[id]; f?.parent; f = this.tree.folders[f.parent]) out.unshift(f.name); return out; },
+  // A folder and the ones above it, nearest first. Drive lets a folder sit in more than one
+  // parent, so the chain can loop back on itself: stop at a folder already seen.
+  chain(id) {
+    const out = [], seen = new Set();
+    for (let f = this.tree?.folders[id]; f && !seen.has(f.id) && out.length < 64; f = this.tree.folders[f.parent]) { seen.add(f.id); out.push(f); }
+    return out;
+  },
+  depth(id) { return this.chain(id).filter(f => f.parent).length; },
+  path(id) { return this.chain(id).filter(f => f.parent).map(f => f.name).reverse(); },
 
   // Folders that stand for one course: inside a semester folder, or a top folder with no sub-folders.
   courseFolders() {
@@ -140,7 +150,7 @@ const NB = {
   },
   // The course a folder (or a file's folder) belongs to, from the nearest linked folder above it.
   courseOf(folderId) {
-    for (let f = this.tree?.folders[folderId]; f; f = this.tree.folders[f.parent]) {
+    for (const f of this.chain(folderId)) {
       const m = Store.get('nbmap', f.id);
       if (m) return m.course ? { code: m.course, folder: f.id } : null;
     }
@@ -158,7 +168,7 @@ const NB = {
   },
   countFor(code) { return this.notesFor(code).length; },
   filesUnder(folderId) {
-    const inside = id => { for (let f = this.tree.folders[id]; f; f = this.tree.folders[f.parent]) if (f.id === folderId) return true; return false; };
+    const inside = id => this.chain(id).some(f => f.id === folderId);
     return this.tree.files.filter(f => inside(f.parent));
   },
 };
@@ -364,8 +374,9 @@ const CDrive = {
         const q = `(${batch.map(id => `'${id}' in parents`).join(' or ')}) and trashed = false`;
         for (const it of await NB.listAll(q, 'id,name,mimeType,parents,modifiedTime,size,thumbnailLink,webViewLink')) {
           const parent = (it.parents || []).find(p => batch.includes(p));
-          if (it.mimeType === NB_FOLDER) { names[it.id] = [...names[parent], it.name]; queue.push(it.id); }
-          else files.push({ id: it.id, name: it.name, mod: it.modifiedTime, size: +it.size || 0, thumb: it.thumbnailLink || '', link: it.webViewLink || '', cat: names[parent].join(' / ') });
+          // Each folder / file once, even when it sits in more than one parent (no endless loop).
+          if (it.mimeType === NB_FOLDER) { if (!names[it.id]) { names[it.id] = [...(names[parent] || []), it.name]; queue.push(it.id); } }
+          else if (!files.some(f => f.id === it.id)) files.push({ id: it.id, name: it.name, mod: it.modifiedTime, size: +it.size || 0, thumb: it.thumbnailLink || '', link: it.webViewLink || '', cat: (names[parent] || []).join(' / ') });
         }
       }
       this.load()[code] = { at: Date.now(), folder: c.drive, files };
