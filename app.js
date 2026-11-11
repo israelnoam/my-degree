@@ -265,7 +265,26 @@ document.addEventListener('click', e => {
   if (b) { if (b.dataset.go === 'tasks') taskFilter = b.dataset.filter || 'open'; go(b.dataset.go); }
 });
 
+// Safety net: no screen redraws more than 40 times in 2 seconds. If something asks for more,
+// it is a redraw loop (a refresh that redraws, which asks for the refresh again); dropping
+// the extra redraws breaks the loop, so the page can't freeze.
+const renderTimes = [];
+function renderLooping() {
+  const now = Date.now();
+  while (renderTimes.length && now - renderTimes[0] > 2000) renderTimes.shift();
+  if (renderTimes.length >= 40) {
+    if (!renderLooping.warned) { renderLooping.warned = true; console.error('[render] redraw loop stopped on', currentView); }
+    // A big batch of edits (an import) can also get here: draw the final state once it's quiet.
+    clearTimeout(renderLooping.timer);
+    renderLooping.timer = setTimeout(() => render(), 2100);
+    return true;
+  }
+  renderTimes.push(now);
+  return false;
+}
+
 function render() {
+  if (renderLooping()) return;
   const views = { map: renderMap, planner: renderPlanner, performance: renderPerformance, tasks: renderTasks, timetable: renderTimetable, cv: renderCv, tools: renderTools, formula: renderFormula, settings: renderSettings };
   try {
     renderStats();
@@ -1422,7 +1441,10 @@ window.addEventListener('DOMContentLoaded', () => {
     currentView = 'map';
   }
   lsSet(LS_BOOTING, currentView);
-  setTimeout(() => { try { localStorage.removeItem(LS_BOOTING); } catch {} }, 8000);
+  const bootDone = () => { try { localStorage.removeItem(LS_BOOTING); } catch {} };
+  setTimeout(bootDone, 8000);
+  // Closing or reloading in the first seconds is not a freeze (a frozen page can't run this).
+  window.addEventListener('pagehide', bootDone);
   bootStep('first screen', () => go(currentView));
   // If the saved screen failed, fall back to the course map.
   if (!$('#view').children.length) { currentView = 'map'; bootStep('map', () => go('map')); }

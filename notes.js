@@ -85,11 +85,19 @@ const NB = {
     })();
     return this.loading;
   },
+  // Background refresh. It redraws the screen when it ends, and the redraw asks for a refresh
+  // again, so it must never run when it can't change anything: with an expired sign-in the
+  // scan used to return at once, redraw, and start again, forever (the page froze).
+  // So: only with a live token, at most one try a minute, and onDone only after a real scan.
+  triedAt: 0,
   refreshIfStale(onDone) {
     this.loadCache();
-    if (!this.canRead() || this.loading || this.error) return;
+    if (!this.canRead() || this.loading || this.error || !Sync.token()) return;
     if (this.tree && Date.now() - this.tree.at < NB_STALE_MS) return;
-    this.scan().then(onDone);
+    if (Date.now() - this.triedAt < 60_000) return;
+    this.triedAt = Date.now();
+    const before = this.tree;
+    this.scan().then(() => { if (this.tree !== before) setTimeout(onDone, 0); }, () => {});
   },
 
   // ---------- duplicates: the same note name twice in one folder ----------
@@ -156,19 +164,35 @@ const NB = {
     }
     return null;
   },
-  notesFor(code) {
-    if (!this.tree) return [];
+  // Every course's notes, worked out once per tree / folder linking (not once per course per
+  // redraw: the Tools screen asks for each course's count, and that made it crawl).
+  index() {
+    const t = this.tree;
+    if (!t) return {};
+    const sig = Store.list('nbmap').map(m => `${m.id}=${m.course || ''}`).sort().join('|');
+    const c = this._index;
+    if (c && c.tree === t && c.files === t.files && c.sig === sig) return c.by;
     const dupes = new Set(this.duplicates().map(f => f.id));
-    return this.tree.files.filter(f => !dupes.has(f.id)).flatMap(f => {
-      const c = this.courseOf(f.parent);
-      if (!c || c.code !== code) return [];
-      const base = this.path(c.folder).length;
-      return [{ ...f, cat: this.path(f.parent).slice(base).join(' / ') }];
-    });
+    const perFolder = new Map(); // folder id -> { code, cat } | null
+    const by = {};
+    for (const f of t.files) {
+      if (dupes.has(f.id)) continue;
+      let info = perFolder.get(f.parent);
+      if (info === undefined) {
+        const co = this.courseOf(f.parent);
+        info = co ? { code: co.code, cat: this.path(f.parent).slice(this.path(co.folder).length).join(' / ') } : null;
+        perFolder.set(f.parent, info);
+      }
+      if (info) (by[info.code] ||= []).push({ ...f, cat: info.cat });
+    }
+    this._index = { tree: t, files: t.files, sig, by };
+    return by;
   },
+  notesFor(code) { return this.index()[code] || []; },
   countFor(code) { return this.notesFor(code).length; },
   filesUnder(folderId) {
-    const inside = id => this.chain(id).some(f => f.id === folderId);
+    const memo = new Map();
+    const inside = id => { if (!memo.has(id)) memo.set(id, this.chain(id).some(f => f.id === folderId)); return memo.get(id); };
     return this.tree.files.filter(f => inside(f.parent));
   },
 };
@@ -367,7 +391,7 @@ const CDrive = {
     if (!c?.drive || !NB.canRead() || !(interactive ? Sync.ensureToken() : Sync.token())) return;
     if (this.loading[code]) return this.loading[code];
     this.loading[code] = (async () => {
-      const names = { [c.drive]: [] }, files = [];
+      const names = { [c.drive]: [] }, files = [], seen = new Set();
       let queue = [c.drive];
       while (queue.length) {
         const batch = queue.splice(0, 30);
@@ -376,7 +400,7 @@ const CDrive = {
           const parent = (it.parents || []).find(p => batch.includes(p));
           // Each folder / file once, even when it sits in more than one parent (no endless loop).
           if (it.mimeType === NB_FOLDER) { if (!names[it.id]) { names[it.id] = [...(names[parent] || []), it.name]; queue.push(it.id); } }
-          else if (!files.some(f => f.id === it.id)) files.push({ id: it.id, name: it.name, mod: it.modifiedTime, size: +it.size || 0, thumb: it.thumbnailLink || '', link: it.webViewLink || '', cat: (names[parent] || []).join(' / ') });
+          else if (!seen.has(it.id) && seen.add(it.id)) files.push({ id: it.id, name: it.name, mod: it.modifiedTime, size: +it.size || 0, thumb: it.thumbnailLink || '', link: it.webViewLink || '', cat: (names[parent] || []).join(' / ') });
         }
       }
       this.load()[code] = { at: Date.now(), folder: c.drive, files };
@@ -384,9 +408,15 @@ const CDrive = {
     })().finally(() => { delete this.loading[code]; });
     return this.loading[code];
   },
+  // Same rule as NB.refreshIfStale: never start a refresh that can't change anything (no
+  // live token), one try a minute per course, and onDone only when the folder was really read.
+  triedAt: {},
   refreshIfStale(code, onDone) {
     const e = this.entry(code);
-    if (courseByCode(code)?.drive && (!e || Date.now() - e.at > NB_STALE_MS) && !this.loading[code]) this.scan(code).then(onDone, () => {});
+    if (!courseByCode(code)?.drive || (e && Date.now() - e.at <= NB_STALE_MS) || this.loading[code]) return;
+    if (!NB.canRead() || !Sync.token() || Date.now() - (this.triedAt[code] || 0) < 60_000) return;
+    this.triedAt[code] = Date.now();
+    this.scan(code).then(() => { if (this.entry(code) !== e) setTimeout(onDone, 0); }, () => {});
   },
 
   // Folders in your Drive whose name looks like this course (by name or number), Notability's left out.
@@ -522,10 +552,12 @@ async function nbFinishSweep(started) {
 
 // Deleted notes whose 15 days are up, still in the backup, and not marked "keep".
 function nbDue() {
+  const gone = Store.list('nbgone');
+  if (!gone.length) return []; // asked on every redraw (the bell): skip the work when there's nothing
   NB.loadCache();
   const exists = new Set((NB.tree?.files || []).map(f => f.id));
   const limit = Date.now() - NB_GRACE_DAYS * MS_DAY;
-  return Store.list('nbgone').filter(g => !g.keep && g.at <= limit && exists.has(g.id));
+  return gone.filter(g => !g.keep && g.at <= limit && exists.has(g.id));
 }
 
 function nbDueDialog() {

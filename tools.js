@@ -159,7 +159,8 @@ function renderTools(root) {
   $$('[data-newsheet]', root).forEach(b => b.onclick = () => { go('formula'); fsNewSheet(b.dataset.newsheet); });
 
   // Fill in the Pangea links once the site's index arrives.
-  if (active.length && !Pangea.index) Pangea.load().then(() => { if (currentView === 'tools') render(); }).catch(() => {});
+  // (Redraw only if the index really arrived, and not from inside the promise: no redraw loop.)
+  if (active.length && !Pangea.index) Pangea.load().then(() => { if (Pangea.index && currentView === 'tools') setTimeout(render, 0); }).catch(() => {});
 }
 
 function toggleToolPref(key, id) {
@@ -195,6 +196,7 @@ function courseToolsRow(c) {
   const c8 = toCode8(c.code);
   const pg = Pangea.course(c.code);
   const sheet = Store.list('sheet').find(s => s.course === c.code);
+  const nbCount = NB.countFor(c.code);
   const links = [
     ['<img class="btn-logo" src="icons/logos/moodle.png" alt=""> Moodle', `https://moodle26.technion.ac.il/course/search.php?search=${c8}`],
     [`🎬 Panopto${c.panopto ? ' 📁' : ''}`, panoptoUrl(c)],
@@ -212,7 +214,7 @@ function courseToolsRow(c) {
       ${pg ? `<a class="btn small" href="${esc(pg.root)}" target="_blank" rel="noopener" title="${pg.pages.length} דפי סיכום">💧 פנגייה</a>
               <button type="button" class="btn small" data-pzip="${esc(c.code)}" title="מוריד את כל ${pg.pages.length} הדפים של הקורס, כל דף כ-PDF, בקובץ ZIP אחד">⬇️ ZIP (${pg.pages.length})</button>`
         : Pangea.index ? '' : '<span class="muted small">💧 בודק בפנגייה…</span>'}
-      ${NB.countFor(c.code) ? `<button type="button" class="btn small" data-nbopen="${esc(c.code)}">📓 מחברות (${NB.countFor(c.code)})</button>` : ''}
+      ${nbCount ? `<button type="button" class="btn small" data-nbopen="${esc(c.code)}">📓 מחברות (${nbCount})</button>` : ''}
       ${cdriveButtons(c)}
       ${sheet ? `<button type="button" class="btn small" data-opensheet="${esc(sheet.id)}">📐 הנוסחאון</button>`
         : `<button type="button" class="btn small" data-newsheet="${esc(c.code)}">📐 נוסחאון חדש</button>`}
